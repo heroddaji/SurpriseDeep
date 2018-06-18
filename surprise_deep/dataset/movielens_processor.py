@@ -142,6 +142,7 @@ class MovielensProcessor():
             print(f'Already processed dataset {self.ds_name}, skip.')
             return
 
+        print(f'Processed dataset {self.ds_name}...')
         map_rating_file = os.path.join(self.root, self._mapping_folder, self.ds_name, 'map_rating.csv')
         train_file = os.path.join(self.root, self._processed_folder, self.ds_name, 'train.csv')
         test_file = os.path.join(self.root, self._processed_folder, self.ds_name, 'test.csv')
@@ -149,8 +150,8 @@ class MovielensProcessor():
         split_index = int(len(df) * 0.7)
         train_ds = df[0:split_index]
         test_ds = df[split_index:len(df)]
-        train_ds.to_csv(train_file, header=False)
-        test_ds.to_csv(test_file, header=False)
+        train_ds.to_csv(train_file, header=False, index=False)
+        test_ds.to_csv(test_file, header=False, index=False)
         with open(done_file, 'w') as f:
             f.write('done')
 
