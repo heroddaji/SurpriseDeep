@@ -1,2 +1,4 @@
 examples/ds_*
+examples/ml_*
+examples/data*
 __pycache__/

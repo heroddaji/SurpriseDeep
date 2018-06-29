@@ -53,9 +53,10 @@ class MovielensProcessor():
     _mapping_folder = 'map'
     _processed_folder = 'processed'
 
-    def __init__(self, root, ds_name):
-        self.root = 'ds_' + root
-        self.ds_name = ds_name
+    def __init__(self, ds_option):
+        self.option = ds_option
+        self.root = self.option.root_dir
+        self.ds_name = self.option.ds_name
 
         url_dict = self._urls[self.ds_name]
         self.url = url_dict['file']
@@ -133,7 +134,13 @@ class MovielensProcessor():
             user_f.write(map_user_str)
             movie_f.write(map_movie_str)
             rating_f.write(map_rating_str)
-            done_f.write('done')
+            self.option.user_count = user_count
+            self.option.movie_count = movie_count
+            self.option.rating_count = rating_count
+            self.option.save()
+            done_f.write("done")
+
+
 
     def split_train_test_dataset(self, force=False):
         self._create_dataset_dir(self._processed_folder, self.ds_name)
