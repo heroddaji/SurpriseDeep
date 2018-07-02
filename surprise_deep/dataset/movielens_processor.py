@@ -101,11 +101,13 @@ class MovielensProcessor():
         user_count = 0
         movie_count = 0
         rating_count = 0
+        timestamp_count = 0
         with open(raw_rating_file, 'r') as raw_f, \
                 open(user_id_map_file, 'w') as user_f, \
                 open(movie_id_map_file, 'w') as movie_f, \
                 open(map_rating_file, 'w') as rating_f, \
                 open(done_file, 'w') as done_f:
+
             for line in raw_f:
                 try:
                     items = line.split(self.delimiter)
@@ -124,8 +126,9 @@ class MovielensProcessor():
                         map_movie_str += f'{raw_movie_id},{movie_count}\n'
                         movie_count += 1
 
-                    map_rating_str += f'{user_count-1},{movie_count-1},{raw_rating},{raw_time}\n'
+                    map_rating_str += f'{len(map_user_map) - 1},{len(map_movie_map) - 1},{raw_rating},{raw_time}\n'
                     rating_count += 1
+                    timestamp_count += 1
                     print('mapping rating ', rating_count)
 
                 except Exception as e:
@@ -134,13 +137,12 @@ class MovielensProcessor():
             user_f.write(map_user_str)
             movie_f.write(map_movie_str)
             rating_f.write(map_rating_str)
-            self.option.user_count = user_count
-            self.option.movie_count = movie_count
-            self.option.rating_count = rating_count
+            self.option.rating_columns = ['userId', 'movieId', 'rating', 'timestamp']
+            self.option.rating_columns_unique_count = [user_count, movie_count, rating_count, timestamp_count]
+            self.option.pivot_indexes = [0, 1]
+
             self.option.save()
             done_f.write("done")
-
-
 
     def split_train_test_dataset(self, force=False):
         self._create_dataset_dir(self._processed_folder, self.ds_name)
@@ -157,8 +159,8 @@ class MovielensProcessor():
         split_index = int(len(df) * 0.7)
         train_ds = df[0:split_index]
         test_ds = df[split_index:len(df)]
-        train_ds.to_csv(train_file, header=False, index=False)
-        test_ds.to_csv(test_file, header=False, index=False)
+        train_ds.to_csv(train_file, header=True, index=False)
+        test_ds.to_csv(test_file, header=True, index=False)
         with open(done_file, 'w') as f:
             f.write('done')
 

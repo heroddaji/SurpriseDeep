@@ -15,6 +15,7 @@ class Movielens(data.Dataset):
         self.processed_path = os.path.join(ds_option.root_dir, ds_option.processed_folder, ds_option.ds_name)
         self.is_train_set = train
         self.data = {True: [], False: []}
+        self.group_data = None
 
     def __len__(self):
         return len(self.data[self.is_train_set])
@@ -22,13 +23,27 @@ class Movielens(data.Dataset):
     def __getitem__(self, item):
         return self.data[self.is_train_set].iloc[item].tolist()
 
-    def load_data(self):
+    def _load_data(self):
         if self.is_train_set:
             self.data[self.is_train_set] = pd.read_csv(os.path.join(self.processed_path, 'train.csv'))
         else:
             self.data[self.is_train_set] = pd.read_csv(os.path.join(self.processed_path, 'test.csv'))
 
+        data = self.data[self.is_train_set]
+        pivot_indexes = self.option.pivot_indexes
+        group_row_key = self.option.rating_columns[pivot_indexes[0]]
+        self.group_data = data.groupby(group_row_key)
+
     def download_and_process_data(self):
         self.data_processor.download(force=self.option.force_new)
         self.data_processor.map_dataset(force=self.option.force_new)
         self.data_processor.split_train_test_dataset(force=self.option.force_new)
+
+    def get_mini_batch(self, batch_size=1):
+        if self.data[self.is_train_set] == []:
+            self._load_data()
+
+        for index, group in self.group_data:
+            print(index, group)
+
+        return None

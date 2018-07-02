@@ -7,13 +7,13 @@ class ModelOption(RunOption):
         "file_name": "model_option.json",
         "force_new": False,
         "learning_rate": 0.0001,
-        "weight_decay": 0.0,
+        "weight_decay": 0,
         "drop_prob": 0.0,  # dropout drop probability
         "noise_prob": 0.0,
         "batch_size": 128,
-        "num_epoch": 50,
-        "optimizer": "momentum",
-        "activation": "selu",
+        "num_epochs": 50,
+        "optimizer": "adam",
+        "activation": "relu",  # selu, relu6, etc
         "hidden_layers": [1024, 512, 512, 128],
         "decoder_constraint": True,  # ???
         "save_dir": "save_models"  # save and log directory inside the root_dir

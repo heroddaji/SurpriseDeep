@@ -10,9 +10,14 @@ class DatasetOption(RunOption):
         'raw_folder': 'raw',
         'processed_folder': 'processed',
         'map_folder': 'map',
-        'user_count':0,
-        'movie_count':0,
-        'rating_count':0,
+        'rating_columns': ['userId', 'movieId', 'rating', 'timestamp'],  # run for user of movie
+        "pivot_indexes": [
+            0,
+            1
+        ],
+        'rating_columns_unique_count': [1, 2, 3, 4],
+        'shuffle': True,
+
     }
     _attrs = ['root_dir', 'file_name', 'force_new']
 
