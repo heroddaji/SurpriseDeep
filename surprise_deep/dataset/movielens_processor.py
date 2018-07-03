@@ -115,18 +115,23 @@ class MovielensProcessor():
                     raw_movie_id = int(items[1])
                     raw_rating = float(items[2])
                     raw_time = int(items[3])
-
+                    temp_movie_id = movie_count
+                    temp_user_id = user_count
                     if raw_user_id not in map_user_map:
                         map_user_map[raw_user_id] = user_count
-                        map_user_str += f'{raw_user_id},{user_count}\n'
+                        temp_user_id = user_count
                         user_count += 1
+                    else:
+                        temp_user_id = map_user_map[raw_user_id]
 
                     if raw_movie_id not in map_movie_map:
                         map_movie_map[raw_movie_id] = movie_count
-                        map_movie_str += f'{raw_movie_id},{movie_count}\n'
+                        temp_movie_id = movie_count
                         movie_count += 1
+                    else:
+                        temp_movie_id = map_movie_map[raw_movie_id]
 
-                    map_rating_str += f'{len(map_user_map) - 1},{len(map_movie_map) - 1},{raw_rating},{raw_time}\n'
+                    map_rating_str += f'{temp_user_id},{temp_movie_id},{raw_rating},{raw_time}\n'
                     rating_count += 1
                     timestamp_count += 1
                     print('mapping rating ', rating_count)

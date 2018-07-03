@@ -1,5 +1,5 @@
 from .run_option import RunOption
-
+import os
 
 class ModelOption(RunOption):
     _default_attrs = {
@@ -22,7 +22,12 @@ class ModelOption(RunOption):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._create_save_dir()
 
     def _read_kwargs(self, **kwargs):
         self.root_dir = kwargs.get(self._attrs[0], self._default_attrs[self._attrs[0]])
         self.file_name = kwargs.get(self._attrs[1], self._default_attrs[self._attrs[1]])
+
+    def _create_save_dir(self):
+        save_dir_path = os.path.join(self.root_dir, self.save_dir)
+        os.makedirs(save_dir_path, exist_ok=True)

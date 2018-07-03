@@ -1,15 +1,21 @@
+from math import sqrt
+
 from .algo_base_deep import AlgoBaseDeep
 
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
+from datetime import datetime
 
 
 class Autoencoder(AlgoBaseDeep):
 
     def __init__(self, model_option, input_dim):
         super().__init__()
+        if torch.cuda.is_available():
+            self = self.cuda()
         self.option = model_option
         self.train_ds = None
         self.test_ds = None
@@ -56,6 +62,7 @@ class Autoencoder(AlgoBaseDeep):
         for index, w in enumerate(self.encoder_w):
             input = F.linear(input=x, weight=w, bias=self.encoder_bias[index])
             x = self.activation(input=input, kind=self.option.activation)
+        return x
         # todo: check dropout
 
     def decode(self, z):
@@ -64,16 +71,63 @@ class Autoencoder(AlgoBaseDeep):
             input = F.linear(input=z, weight=w, bias=self.decoder_bias[index])
             kind = self.option.activation if index != len(self.layers) - 1 else 'none'
             z = self.activation(input=input, kind=kind)
+        return z
 
     def forward(self, x):
-        return self.decoder(self.encoder(x))
+        return self.decode(self.encode(x))
 
-    def fit(self, dataset):
+    def learn(self, train_ds):
         optimizer = self.optimizer(self.option)
         num_epochs = self.option.num_epochs
-        self.train()
-        for index, mini_batch in enumerate(dataset.get_mini_batch(batch_size=self.option.batch_size)):
-            pass
+        total_loss = 0
+        total_loss_denom = 0.0
+        for epoch in range(num_epochs):
+            self.train()
+            print(f'epoch: {epoch}')
+            for index, mini_batch in enumerate(
+                    train_ds.get_mini_batch(batch_size=self.option.batch_size, input_dim=self.input_dim)):
+                # todo: check cuda
+                optimizer.zero_grad()
+                inputs = mini_batch.to_dense()
+                outputs = self.forward(inputs)
+                loss = self.MMSEloss(outputs, inputs)
+                print(f'loss:{loss}')
+                loss.backward()
+                optimizer.step()
+
+                total_loss += loss.item()
+                total_loss_denom += 1
+
+            print(f'epoch:{epoch}, RMSE:{sqrt(total_loss/total_loss_denom)}')
+        self.save_model('autoencoder')
+
+    def evaluate(self, eval_ds, infer_name):
+        self.eval()
+        infer_file = os.path.join(self.option.root_dir, self.option.save_dir, infer_name)
+
+        with open(infer_file,'w') as infer_f:
+            first_column_name = eval_ds.option.rating_columns[eval_ds.option.pivot_indexes[0]]
+            second_column_name = eval_ds.option.rating_columns[eval_ds.option.pivot_indexes[1]]
+            third_column_name = 'actual_rating'
+            fourth_column_name = 'infer_rating'
+            infer_f.write(f'{first_column_name},{second_column_name},{third_column_name},{fourth_column_name}')
+            for index, mini_batch in enumerate(eval_ds.get_mini_batch(batch_size=self.option.batch_size,
+                                                                      input_dim=self.input_dim)):
+                # todo: check for cuda
+                inputs = mini_batch.to_dense()
+                outputs = self.forward(inputs)
+                assert (inputs.shape[0] == outputs.shape[0])
+                assert (inputs.shape[1] == outputs.shape[1])
+                for i in range(inputs.shape[0]):
+                    for j in range(inputs.shape[1]):
+                        infer_f.write(f'{i},{j},{inputs[i,j]},{outputs[i,j]}')
 
 
+    def save_model(self, name):
+        save_file = os.path.join(self.option.root_dir, self.option.save_dir, f'{name}.model')
+        torch.save(self.state_dict(), save_file)
 
+    def load_model(self, name):
+        load_file = os.path.join(self.option.root_dir, self.option.save_dir, f'{name}')
+        print(f'load model:{load_file}')
+        self.load_state_dict(torch.load(load_file))

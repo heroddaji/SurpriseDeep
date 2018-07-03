@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -57,3 +58,18 @@ class AlgoBaseDeep(nn.Module):
             raise ValueError('Unknown optimizer kind')
 
         return optimizer
+
+    def MMSEloss(self, inputs, targets):
+        mask = targets != 0
+        num_rating = torch.sum(mask.float())
+        # todo: size_average option?
+        size_average = False
+        criterion = nn.MSELoss(size_average=size_average)
+
+        if size_average:
+            num_rating = 1
+
+        loss = criterion(inputs * mask.float(), targets)
+        loss = loss / num_rating
+        return loss
+
