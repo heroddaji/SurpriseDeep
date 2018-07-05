@@ -84,8 +84,8 @@ class Autoencoder(AlgoBaseDeep):
         for epoch in range(num_epochs):
             self.train()
             print(f'epoch: {epoch}')
-            for index, mini_batch in enumerate(
-                    train_ds.get_mini_batch(batch_size=self.option.batch_size, input_dim=self.input_dim)):
+            for index, (sparse_row_index, sparse_column_index, sparse_rating, mini_batch) in enumerate(
+                    train_ds.get_mini_batch(batch_size=self.option.train_batch_size, input_dim=self.input_dim)):
                 # todo: check cuda
                 optimizer.zero_grad()
                 inputs = mini_batch.to_dense()
@@ -99,35 +99,60 @@ class Autoencoder(AlgoBaseDeep):
                 total_loss_denom += 1
 
             print(f'epoch:{epoch}, RMSE:{sqrt(total_loss/total_loss_denom)}')
-        self.save_model('autoencoder')
 
     def evaluate(self, eval_ds, infer_name):
         self.eval()
         infer_file = os.path.join(self.option.root_dir, self.option.save_dir, infer_name)
 
-        with open(infer_file,'w') as infer_f:
+        with open(infer_file, 'w') as infer_f:
             first_column_name = eval_ds.option.rating_columns[eval_ds.option.pivot_indexes[0]]
             second_column_name = eval_ds.option.rating_columns[eval_ds.option.pivot_indexes[1]]
             third_column_name = 'actual_rating'
             fourth_column_name = 'infer_rating'
-            infer_f.write(f'{first_column_name},{second_column_name},{third_column_name},{fourth_column_name}')
-            for index, mini_batch in enumerate(eval_ds.get_mini_batch(batch_size=self.option.batch_size,
-                                                                      input_dim=self.input_dim)):
+            infer_f.write(f'{first_column_name},{second_column_name},{third_column_name},{fourth_column_name}\n')
+            for index, (sparse_row_index, sparse_column_index, sparse_rating, mini_batch) in enumerate(
+                    eval_ds.get_mini_batch(batch_size=self.option.test_batch_size,
+                                           input_dim=self.input_dim)):
                 # todo: check for cuda
                 inputs = mini_batch.to_dense()
                 outputs = self.forward(inputs)
                 assert (inputs.shape[0] == outputs.shape[0])
                 assert (inputs.shape[1] == outputs.shape[1])
-                for i in range(inputs.shape[0]):
-                    for j in range(inputs.shape[1]):
-                        infer_f.write(f'{i},{j},{inputs[i,j]},{outputs[i,j]}')
+                for i in range(len(sparse_row_index)):
+                    print(f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}')
+                    predict_value = outputs[sparse_row_index[i], sparse_column_index[i]]
+                    infer_f.write(f'{sparse_row_index[i]},'
+                                  f'{sparse_column_index[i]},'
+                                  f'{sparse_rating[i]},'
+                                  f'{predict_value}\n')
 
+    def cal_RMSE(self, infer_name):
+        pred_file = os.path.join(self.option.root_dir, self.option.save_dir, infer_name)
+        with open(pred_file, 'r') as f:
+            lines = f.readlines()
+            count = 0
+            denominator = 0
+            for line in lines:
+                try:
+                    parts = line.split(',')
+                    pred = float(parts[3])
+                    actual = float(parts[2])
+                    denominator += (pred - actual) * (pred - actual)
+                    count += 1
+                except Exception as e:
+                    continue
+
+        print(f'RMSE {sqrt(denominator / count)}')
 
     def save_model(self, name):
-        save_file = os.path.join(self.option.root_dir, self.option.save_dir, f'{name}.model')
+        save_file = os.path.join(self.option.root_dir, self.option.save_dir, f'{name}')
         torch.save(self.state_dict(), save_file)
 
     def load_model(self, name):
-        load_file = os.path.join(self.option.root_dir, self.option.save_dir, f'{name}')
-        print(f'load model:{load_file}')
-        self.load_state_dict(torch.load(load_file))
+        try:
+            load_file = os.path.join(self.option.root_dir, self.option.save_dir, f'{name}')
+            print(f'load model:{load_file}')
+            self.load_state_dict(torch.load(load_file))
+            return True
+        except Exception as e:
+            return False

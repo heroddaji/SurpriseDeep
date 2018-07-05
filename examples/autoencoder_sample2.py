@@ -21,8 +21,12 @@ model = Autoencoder(model_option,
                     input_dim=ml_option.rating_columns_unique_count[
                         ml_option.pivot_indexes[1]])  # get the movie count as number of columns
 print(model)
-model.load_model('autoencoder.model')
-#model.learn(ml_ds_train)
-model.evaluate(ml_ds_test,'movielens_preds.txt')
+
+# model.learn(ml_ds_train)
+# model.save_model('autoencoder.model')
+# model.load_model('autoencoder.model')
+# model.evaluate(ml_ds_test, 'movielens_preds.txt')
+model.cal_RMSE("movielens_preds.txt")
+
 
 # bug: always unzip 10m file

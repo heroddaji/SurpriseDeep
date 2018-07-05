@@ -10,11 +10,12 @@ class ModelOption(RunOption):
         "weight_decay": 0,
         "drop_prob": 0.0,  # dropout drop probability
         "noise_prob": 0.0,
-        "batch_size": 128,
+        "train_batch_size": 128,
+        "test_batch_size": 1,
         "num_epochs": 50,
         "optimizer": "adam",
         "activation": "relu",  # selu, relu6, etc
-        "hidden_layers": [1024, 512, 512, 128],
+        "hidden_layers": [512, 256, 128],
         "decoder_constraint": True,  # ???
         "save_dir": "save_models"  # save and log directory inside the root_dir
     }

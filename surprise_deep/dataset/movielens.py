@@ -43,15 +43,21 @@ class Movielens(data.Dataset):
         if not isinstance(self.data[self.is_train_set], pd.DataFrame):
             self._load_data()
 
-        index1 = []
-        index2 = []
-        rating = []
+        sparse_row_index = []
+        sparse_column_index = []
+        sparse_value = []
+        count = 0
         for index, group in self.group_data:
-            index1 += group.iloc[:, 0].tolist()
-            index2 += group.iloc[:, 1].tolist()
-            rating += group.iloc[:, 2].tolist()
-            if (index + 1) % batch_size == 0 or index == (len(self.group_data) - 1):
-                i_torch = torch.LongTensor([index1, index2])
-                v_torch = torch.FloatTensor(rating)
-                mini_batch = torch.sparse.FloatTensor(i_torch, v_torch, torch.Size([max(index1) + 1, input_dim]))
-                yield mini_batch
+            sparse_row_index += group.iloc[:, 0].tolist()
+            sparse_column_index += group.iloc[:, 1].tolist()
+            sparse_value += group.iloc[:, 2].tolist()
+            if (index + 1) % batch_size == 0 or count == (len(self.group_data) - 1):
+                i_torch = torch.LongTensor([sparse_row_index, sparse_column_index])
+                v_torch = torch.FloatTensor(sparse_value)
+                mini_batch = torch.sparse.FloatTensor(i_torch, v_torch,
+                                                      torch.Size([max(sparse_row_index) + 1, input_dim]))
+                count += 1
+                yield sparse_row_index, sparse_column_index, sparse_value, mini_batch
+                sparse_row_index = []
+                sparse_column_index = []
+                sparse_value = []
