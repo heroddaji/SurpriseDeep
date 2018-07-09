@@ -1,0 +1,4 @@
+- logger
+- separate dataset into folder save_dir
+- test with other dataset, make flow to run them all
+- draw some evaluation

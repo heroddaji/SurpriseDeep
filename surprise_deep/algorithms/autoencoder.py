@@ -7,20 +7,25 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
+import shutil
 from datetime import datetime
 
 
 class Autoencoder(AlgoBaseDeep):
+    tmp_name = 'training_temp_epoch_'
 
     def __init__(self, model_option, input_dim):
         super().__init__()
         if torch.cuda.is_available():
             self = self.cuda()
         self.option = model_option
+        self.logger = self.option.logger()
         self.train_ds = None
         self.test_ds = None
         self.input_dim = input_dim
         self.layers = []
+        self.resume_epoch = None
+        self.resume_filename = None
 
         if model_option is None:
             raise Exception("No run option")
@@ -38,7 +43,7 @@ class Autoencoder(AlgoBaseDeep):
             [nn.Parameter(torch.rand(self.layers[i + 1], self.layers[i])) for i in range(len(self.layers) - 1)]
         )
         for index, w in enumerate(self.encoder_w):
-            init.xavier_uniform(w)
+            init.xavier_uniform_(w)
 
         # init the encoder bias
         self.encoder_bias = nn.ParameterList(
@@ -51,12 +56,21 @@ class Autoencoder(AlgoBaseDeep):
             [nn.Parameter(torch.rand(reverse_layers[i + 1], reverse_layers[i])) for i in range(len(reverse_layers) - 1)]
         )
         for index, w in enumerate(self.decoder_w):
-            init.xavier_uniform(w)
+            init.xavier_uniform_(w)
 
         # init the decoder bias
         self.decoder_bias = nn.ParameterList(
             [nn.Parameter(torch.zeros(reverse_layers[i + 1])) for i in range(len(reverse_layers) - 1)]
         )
+
+    def _resume_training(self):
+        if self.option.resume_training:
+            temp_files = os.listdir(self.option.get_working_dir())
+            for file_name in temp_files:
+                if file_name.startswith(self.tmp_name):
+                    self.resume_filename = file_name
+                    self.load_model(self.resume_filename)
+                    self.resume_epoch = self.resume_filename.split('_')[3]
 
     def encode(self, x):
         for index, w in enumerate(self.encoder_w):
@@ -77,13 +91,19 @@ class Autoencoder(AlgoBaseDeep):
         return self.decode(self.encode(x))
 
     def learn(self, train_ds):
+        self._resume_training()
         optimizer = self.optimizer(self.option)
         num_epochs = self.option.num_epochs
         total_loss = 0
         total_loss_denom = 0.0
-        for epoch in range(num_epochs):
+
+        resume_e = 0
+        if self.resume_epoch is not None:
+            resume_e = self.resume_epoch
+            self.resume_epoch = None
+
+        for epoch in range(resume_e, num_epochs):
             self.train()
-            print(f'epoch: {epoch}')
             for index, (sparse_row_index, sparse_column_index, sparse_rating, mini_batch) in enumerate(
                     train_ds.get_mini_batch(batch_size=self.option.train_batch_size, input_dim=self.input_dim)):
                 # todo: check cuda
@@ -91,14 +111,15 @@ class Autoencoder(AlgoBaseDeep):
                 inputs = mini_batch.to_dense()
                 outputs = self.forward(inputs)
                 loss = self.MMSEloss(outputs, inputs)
-                print(f'loss:{loss}')
+                self.logger.debug(f'epoch {epoch} - loss:{loss}')
                 loss.backward()
                 optimizer.step()
 
                 total_loss += loss.item()
                 total_loss_denom += 1
 
-            print(f'epoch:{epoch}, RMSE:{sqrt(total_loss/total_loss_denom)}')
+            self.logger.debug(f'epoch:{epoch}, RMSE:{sqrt(total_loss/total_loss_denom)}')
+            self._save_tmp_model(epoch)
 
     def evaluate(self, eval_ds, infer_name):
         self.eval()
@@ -119,7 +140,7 @@ class Autoencoder(AlgoBaseDeep):
                 assert (inputs.shape[0] == outputs.shape[0])
                 assert (inputs.shape[1] == outputs.shape[1])
                 for i in range(len(sparse_row_index)):
-                    print(f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}')
+                    self.logger.debug(f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}')
                     predict_value = outputs[sparse_row_index[i], sparse_column_index[i]]
                     infer_f.write(f'{sparse_row_index[i]},'
                                   f'{sparse_column_index[i]},'
@@ -142,16 +163,24 @@ class Autoencoder(AlgoBaseDeep):
                 except Exception as e:
                     continue
 
-        print(f'RMSE {sqrt(denominator / count)}')
+        self.logger.debug(f'RMSE {sqrt(denominator / count)}')
+
+    def _save_tmp_model(self, epoch):
+        temp_name = f'{self.tmp_name}{epoch}'
+        self.save_model(temp_name)
+        if self.resume_filename is not None:
+            old_resume_file = os.path.join(self.option.get_working_dir(), self.resume_filename)
+            os.unlink(old_resume_file)
+        self.resume_filename = temp_name
 
     def save_model(self, name):
-        save_file = os.path.join(self.option.root_dir, self.option.save_dir, f'{name}')
+        save_file = os.path.join(self.option.get_working_dir(), f'{name}')
         torch.save(self.state_dict(), save_file)
 
     def load_model(self, name):
         try:
-            load_file = os.path.join(self.option.root_dir, self.option.save_dir, f'{name}')
-            print(f'load model:{load_file}')
+            load_file = os.path.join(self.option.get_working_dir(), f'{name}')
+            self.logger.debug(f'load model:{load_file}')
             self.load_state_dict(torch.load(load_file))
             return True
         except Exception as e:

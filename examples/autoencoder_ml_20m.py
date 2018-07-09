@@ -11,22 +11,21 @@ print(sys.path)
 from surprise_deep import *
 from recommender_systems import Autoencoder, MovielensProcessor, Movielens
 
-ml_option = DatasetOption(root_dir='ds_movielens', ds_name='100k')
+ml_option = DatasetOption(root_dir='ds_movielens', ds_name='20m', save_dir='20m')
 ml_ds_train = Movielens(ml_option)
 ml_ds_train.download_and_process_data()
 ml_ds_test = Movielens(ml_option, train=False)
 
-model_option = ModelOption(root_dir="ml_autoencoder")
+model_option = ModelOption(root_dir="recsys_deeplearning", save_dir="autoencoder_20m")
 model = Autoencoder(model_option,
                     input_dim=ml_option.rating_columns_unique_count[
                         ml_option.pivot_indexes[1]])  # get the movie count as number of columns
 print(model)
 
-# model.learn(ml_ds_train)
-# model.save_model('autoencoder.model')
-# model.load_model('autoencoder.model')
-# model.evaluate(ml_ds_test, 'movielens_preds.txt')
-model.cal_RMSE("movielens_preds.txt")
-
+model.learn(ml_ds_train)
+model.save_model('autoencoder_relu_adam.model')
+model.load_model('autoencoder_relu_adam.model')
+model.evaluate(ml_ds_test, 'movielens_100k_preds.txt')
+model.cal_RMSE("movielens_100k_preds.txt")
 
 # bug: always unzip 10m file

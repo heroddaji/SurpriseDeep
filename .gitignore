@@ -1,4 +1,5 @@
 examples/ds_*
 examples/ml_*
 examples/data*
+examples/recsys*
 __pycache__/

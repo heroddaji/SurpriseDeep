@@ -55,7 +55,9 @@ class MovielensProcessor():
 
     def __init__(self, ds_option):
         self.option = ds_option
+        self.logger = self.option.logger()
         self.root = self.option.root_dir
+        self.save_dir = self.option.save_dir
         self.ds_name = self.option.ds_name
 
         url_dict = self._urls[self.ds_name]
@@ -64,15 +66,16 @@ class MovielensProcessor():
         self.rating_file_name = url_dict['rating_file']
         self.filename_zip = self.url.rpartition('/')[2]
         self.filename = self.filename_zip.replace('.zip', '')
-        self.file_path_zip = os.path.join(self.root, self._raw_folder, self.ds_name, self.filename_zip)
-        self.ds_folder = os.path.join(self.root, self._raw_folder, self.ds_name)
+        self.file_path_zip = os.path.join(self.root, self.save_dir, self._raw_folder, self.ds_name, self.filename_zip)
+        self.ds_folder = os.path.join(self.root, self.save_dir, self._raw_folder, self.ds_name)
 
-    def download(self, force=False):
+    def download(self):
+        force = self.option.force_new
         self._create_dataset_dir(self._raw_folder, self.ds_name)
         if self._check_exists(self.file_path_zip) and not force:
-            print('file: ' + self.filename_zip + ' existed, skip download')
+            self.logger.debug('file: ' + self.filename_zip + ' existed, skip download')
         else:
-            print('Downloading ' + self.url)
+            self.logger.debug('Downloading ' + self.url)
             data = urllib.request.urlopen(self.url)
             with open(self.file_path_zip, 'wb') as f:
                 f.write(data.read())
@@ -80,17 +83,19 @@ class MovielensProcessor():
         self._unzip_file(self.file_path_zip, self.ds_name)
 
     # todo: later optimize procesing data with saving checkpoint
-    def map_dataset(self, force=False):
-        done_file = os.path.join(self.root, self._mapping_folder, self.ds_name, 'done')
+    def map_dataset(self):
+        force = self.option.force_new
+        done_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name, 'done')
         if os.path.exists(done_file) and not force:
-            print(f'Already mapped dataset {self.ds_name}, skip.')
+            self.logger.debug(f'Already mapped dataset {self.ds_name}, skip.')
             return
 
         self._create_dataset_dir(self._mapping_folder, self.ds_name)
         raw_rating_file = os.path.join(self.ds_folder, self.filename, self.rating_file_name)
-        user_id_map_file = os.path.join(self.root, self._mapping_folder, self.ds_name, 'map_user_id.csv')
-        movie_id_map_file = os.path.join(self.root, self._mapping_folder, self.ds_name, 'map_movie_id.csv')
-        map_rating_file = os.path.join(self.root, self._mapping_folder, self.ds_name, 'map_rating.csv')
+        user_id_map_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name, 'map_user_id.csv')
+        movie_id_map_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name,
+                                         'map_movie_id.csv')
+        map_rating_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name, 'map_rating.csv')
 
         map_user_map = {}
         map_user_str = ''
@@ -134,7 +139,7 @@ class MovielensProcessor():
                     map_rating_str += f'{temp_user_id},{temp_movie_id},{raw_rating},{raw_time}\n'
                     rating_count += 1
                     timestamp_count += 1
-                    print('mapping rating ', rating_count)
+                    self.logger.debug('mapping rating ', rating_count)
 
                 except Exception as e:
                     continue
@@ -149,17 +154,18 @@ class MovielensProcessor():
             self.option.save()
             done_f.write("done")
 
-    def split_train_test_dataset(self, force=False):
+    def split_train_test_dataset(self):
+        force = self.option.force_new
         self._create_dataset_dir(self._processed_folder, self.ds_name)
-        done_file = os.path.join(self.root, self._processed_folder, self.ds_name, 'done')
+        done_file = os.path.join(self.root, self.save_dir, self._processed_folder, self.ds_name, 'done')
         if os.path.exists(done_file) and not force:
-            print(f'Already processed dataset {self.ds_name}, skip.')
+            self.logger.debug(f'Already processed dataset {self.ds_name}, skip.')
             return
 
-        print(f'Processed dataset {self.ds_name}...')
-        map_rating_file = os.path.join(self.root, self._mapping_folder, self.ds_name, 'map_rating.csv')
-        train_file = os.path.join(self.root, self._processed_folder, self.ds_name, 'train.csv')
-        test_file = os.path.join(self.root, self._processed_folder, self.ds_name, 'test.csv')
+        self.logger.debug(f'Processed dataset {self.ds_name}...')
+        map_rating_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name, 'map_rating.csv')
+        train_file = os.path.join(self.root, self.save_dir, self._processed_folder, self.ds_name, 'train.csv')
+        test_file = os.path.join(self.root, self.save_dir, self._processed_folder, self.ds_name, 'test.csv')
         df = pd.read_csv(map_rating_file, names=['userId', 'movieId', 'rating', 'timestamp'])
         split_index = int(len(df) * 0.7)
         train_ds = df[0:split_index]
@@ -173,18 +179,18 @@ class MovielensProcessor():
         return os.path.exists(os.path.realpath(file_path))
 
     def _unzip_file(self, file_path, ds_folder):
-        extract_folder = os.path.join(self.root, self._raw_folder, self.ds_name)
+        extract_folder = os.path.join(self.root, self.save_dir, self._raw_folder, self.ds_name)
         if os.path.exists(os.path.join(ds_folder, self.filename)):
             return
 
         import zipfile
         with zipfile.ZipFile(file_path) as out_f:
-            print('Unzipping ' + file_path)
+            self.logger.debug('Unzipping ' + file_path)
             out_f.extractall(extract_folder)
 
     def _create_dataset_dir(self, dir, ds_name):
         try:
-            os.makedirs(os.path.join(self.root, dir, ds_name))
+            os.makedirs(os.path.join(self.root, self.save_dir, dir, ds_name))
         except OSError as e:
             if e.errno == errno.EEXIST:
                 pass

@@ -2,6 +2,7 @@ import os
 import torch
 import torch.utils.data as data
 import pandas as pd
+from random import shuffle
 from .movielens_processor import MovielensProcessor
 
 
@@ -13,7 +14,10 @@ class Movielens(data.Dataset):
         self.option = ds_option
         self.data_processor = MovielensProcessor(self.option)
 
-        self.processed_path = os.path.join(ds_option.root_dir, ds_option.processed_folder, ds_option.ds_name)
+        self.processed_path = os.path.join(ds_option.root_dir,
+                                           ds_option.save_dir,
+                                           ds_option.processed_folder,
+                                           ds_option.ds_name)
         self.is_train_set = train
         self.data = {True: [], False: []}
         self.group_data = None
@@ -35,9 +39,9 @@ class Movielens(data.Dataset):
         self.group_data = self.data[self.is_train_set].groupby(group_row_key)
 
     def download_and_process_data(self):
-        self.data_processor.download(force=self.option.force_new)
-        self.data_processor.map_dataset(force=self.option.force_new)
-        self.data_processor.split_train_test_dataset(force=self.option.force_new)
+        self.data_processor.download()
+        self.data_processor.map_dataset()
+        self.data_processor.split_train_test_dataset()
 
     def get_mini_batch(self, input_dim, batch_size=1, ):
         if not isinstance(self.data[self.is_train_set], pd.DataFrame):
@@ -46,17 +50,21 @@ class Movielens(data.Dataset):
         sparse_row_index = []
         sparse_column_index = []
         sparse_value = []
-        count = 0
+
+        #shuffle to random group order
+        random_groups = []
         for index, group in self.group_data:
+            random_groups.append(group)
+        shuffle(random_groups)
+        for index, group in enumerate(random_groups):
             sparse_row_index += group.iloc[:, 0].tolist()
             sparse_column_index += group.iloc[:, 1].tolist()
             sparse_value += group.iloc[:, 2].tolist()
-            if (index + 1) % batch_size == 0 or count == (len(self.group_data) - 1):
+            if (index + 1) % batch_size == 0 or index == (len(random_groups) - 1):
                 i_torch = torch.LongTensor([sparse_row_index, sparse_column_index])
                 v_torch = torch.FloatTensor(sparse_value)
                 mini_batch = torch.sparse.FloatTensor(i_torch, v_torch,
                                                       torch.Size([max(sparse_row_index) + 1, input_dim]))
-                count += 1
                 yield sparse_row_index, sparse_column_index, sparse_value, mini_batch
                 sparse_row_index = []
                 sparse_column_index = []
