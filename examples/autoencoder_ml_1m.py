@@ -24,8 +24,8 @@ model = Autoencoder(model_option,
 print(model)
 
 model.learn(ml_ds_train)
-model.save_model('autoencoder_selu_1m.model')
-model.load_model('autoencoder_selu_1m.model')
+model.save_model('autoencoder_1m.model')
+model.load_model('autoencoder_1m.model')
 model.evaluate(ml_ds_test, 'movielens_1m_preds.txt')
 model.cal_RMSE("movielens_1m_preds.txt")
 

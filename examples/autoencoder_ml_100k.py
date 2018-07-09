@@ -23,8 +23,8 @@ model_100k = Autoencoder(model_option_100k,
 print(model_100k)
 
 model_100k.learn(ml_ds_train_100k)
-model_100k.save_model('autoencoder_relu_adam.model')
-model_100k.load_model('autoencoder_relu_adam.model')
+model_100k.save_model('autoencoder_100k.model')
+model_100k.load_model('autoencoder_100k.model')
 model_100k.evaluate(ml_ds_test_100k, 'movielens_100k_preds.txt')
 model_100k.cal_RMSE("movielens_100k_preds.txt")
 
