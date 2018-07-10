@@ -64,13 +64,13 @@ class Movielens(data.Dataset):
             sparse_value += group.iloc[:, 2].tolist()
 
             # make certain % of input_values become zero
-            if test_masking_rate > 0:
+            if test_masking_rate > 0 and len(sparse_value) - 1 > 0:
                 random_mask_index = np.random.randint(0, len(sparse_value) - 1,
                                                       int(len(sparse_value) * test_masking_rate))
             if (index + 1) % batch_size == 0 or index == (len(random_groups) - 1):
                 i_torch = torch.LongTensor([sparse_row_index, sparse_column_index])
                 v_torch = torch.FloatTensor(sparse_value)
-                if test_masking_rate > 0:
+                if test_masking_rate > 0 and len(sparse_value) - 1 > 0:
                     v_torch[random_mask_index] = 0
                 mini_batch = torch.sparse.FloatTensor(i_torch, v_torch,
                                                       torch.Size([max(sparse_row_index) + 1, input_dim]))
