@@ -8,22 +8,22 @@ class DatasetOption(RunOption):
         'root_dir': 'dataset',
         'save_dir': 'save_dir',
         'file_name': 'dataset_option.json',
-        'force_new': False,
+        'force_new': False,  # force create new option file
+        'force_download': False,
+        'force_map': False,
+        'force_split': True,
         'ds_name': '100k',
         'raw_folder': 'raw',
         'processed_folder': 'processed',
         'map_folder': 'map',
         'rating_columns': ['userId', 'movieId', 'rating', 'timestamp'],  # run for user of movie
-        "pivot_indexes": [
+        'pivot_indexes': [
             0,
             1
         ],
-        'rating_columns_unique_count': [1, 2, 3, 4],
-        'shuffle': True,
-
+        'rating_columns_unique_count': [0, 0, 0, 0],
+        'test_split_rate': 0.3,
     }
-    _attrs = ['root_dir', 'save_dir', 'file_name', 'ds_name']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-

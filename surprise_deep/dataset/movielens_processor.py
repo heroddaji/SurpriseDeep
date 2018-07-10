@@ -2,6 +2,7 @@ import os
 import errno
 import pandas as pd
 from six.moves import urllib
+from sklearn.model_selection import train_test_split
 
 
 class MovielensProcessor():
@@ -70,7 +71,7 @@ class MovielensProcessor():
         self.ds_folder = os.path.join(self.root, self.save_dir, self._raw_folder, self.ds_name)
 
     def download(self):
-        force = self.option.force_new
+        force = self.option.force_download
         self._create_dataset_dir(self._raw_folder, self.ds_name)
         if self._check_exists(self.file_path_zip) and not force:
             self.logger.debug('file: ' + self.filename_zip + ' existed, skip download')
@@ -84,7 +85,7 @@ class MovielensProcessor():
 
     # todo: later optimize procesing data with saving checkpoint
     def map_dataset(self):
-        force = self.option.force_new
+        force = self.option.force_map
         done_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name, 'done')
         if os.path.exists(done_file) and not force:
             self.logger.debug(f'Already mapped dataset {self.ds_name}, skip.')
@@ -125,6 +126,7 @@ class MovielensProcessor():
                     if raw_user_id not in map_user_map:
                         map_user_map[raw_user_id] = user_count
                         temp_user_id = user_count
+                        map_user_str += f'{temp_user_id},{raw_user_id}'
                         user_count += 1
                     else:
                         temp_user_id = map_user_map[raw_user_id]
@@ -132,6 +134,7 @@ class MovielensProcessor():
                     if raw_movie_id not in map_movie_map:
                         map_movie_map[raw_movie_id] = movie_count
                         temp_movie_id = movie_count
+                        map_movie_str += f'{temp_movie_id},{raw_movie_id}'
                         movie_count += 1
                     else:
                         temp_movie_id = map_movie_map[raw_movie_id]
@@ -155,7 +158,7 @@ class MovielensProcessor():
             done_f.write("done")
 
     def split_train_test_dataset(self):
-        force = self.option.force_new
+        force = self.option.force_split
         self._create_dataset_dir(self._processed_folder, self.ds_name)
         done_file = os.path.join(self.root, self.save_dir, self._processed_folder, self.ds_name, 'done')
         if os.path.exists(done_file) and not force:
@@ -167,9 +170,10 @@ class MovielensProcessor():
         train_file = os.path.join(self.root, self.save_dir, self._processed_folder, self.ds_name, 'train.csv')
         test_file = os.path.join(self.root, self.save_dir, self._processed_folder, self.ds_name, 'test.csv')
         df = pd.read_csv(map_rating_file, names=['userId', 'movieId', 'rating', 'timestamp'])
-        split_index = int(len(df) * 0.7)
-        train_ds = df[0:split_index]
-        test_ds = df[split_index:len(df)]
+
+        test_split_rate = self.option.test_split_rate
+        train_ds, test_ds = train_test_split(df, test_size=test_split_rate)
+
         train_ds.to_csv(train_file, header=True, index=False)
         test_ds.to_csv(test_file, header=True, index=False)
         with open(done_file, 'w') as f:

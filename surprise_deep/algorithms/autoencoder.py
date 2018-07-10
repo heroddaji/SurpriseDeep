@@ -7,8 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
-import shutil
-from datetime import datetime
+import numpy as np
 
 
 class Autoencoder(AlgoBaseDeep):
@@ -76,8 +75,10 @@ class Autoencoder(AlgoBaseDeep):
         for index, w in enumerate(self.encoder_w):
             input = F.linear(input=x, weight=w, bias=self.encoder_bias[index])
             x = self.activation(input=input, kind=self.option.activation)
+        if self.option.drop_prob > 0:
+            x = self.drop(x)
+
         return x
-        # todo: check dropout
 
     def decode(self, z):
         # todo: check for constrained autoencoder
@@ -99,7 +100,7 @@ class Autoencoder(AlgoBaseDeep):
 
         resume_e = 0
         if self.resume_epoch is not None:
-            resume_e = self.resume_epoch
+            resume_e = int(self.resume_epoch)
             self.resume_epoch = None
 
         for epoch in range(resume_e, num_epochs):
@@ -121,6 +122,8 @@ class Autoencoder(AlgoBaseDeep):
             self.logger.debug(f'epoch:{epoch}, RMSE:{sqrt(total_loss/total_loss_denom)}')
             self._save_tmp_model(epoch)
 
+        self._remove_tmp_model(num_epochs)
+
     def evaluate(self, eval_ds, infer_name):
         self.eval()
         infer_file = os.path.join(self.option.root_dir, self.option.save_dir, infer_name)
@@ -133,15 +136,16 @@ class Autoencoder(AlgoBaseDeep):
             infer_f.write(f'{first_column_name},{second_column_name},{third_column_name},{fourth_column_name}\n')
             for index, (sparse_row_index, sparse_column_index, sparse_rating, mini_batch) in enumerate(
                     eval_ds.get_mini_batch(batch_size=self.option.test_batch_size,
-                                           input_dim=self.input_dim)):
+                                           input_dim=self.input_dim,
+                                           test_masking_rate=self.option.test_masking_rate)):
                 # todo: check for cuda
                 inputs = mini_batch.to_dense()
                 outputs = self.forward(inputs)
                 assert (inputs.shape[0] == outputs.shape[0])
                 assert (inputs.shape[1] == outputs.shape[1])
                 for i in range(len(sparse_row_index)):
-                    self.logger.debug(f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}')
                     predict_value = outputs[sparse_row_index[i], sparse_column_index[i]]
+                    self.logger.debug(f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}:{predict_value}')
                     infer_f.write(f'{sparse_row_index[i]},'
                                   f'{sparse_column_index[i]},'
                                   f'{sparse_rating[i]},'
@@ -170,8 +174,13 @@ class Autoencoder(AlgoBaseDeep):
         self.save_model(temp_name)
         if self.resume_filename is not None:
             old_resume_file = os.path.join(self.option.get_working_dir(), self.resume_filename)
-            os.unlink(old_resume_file)
+            if os.path.exists(old_resume_file):
+                os.unlink(old_resume_file)
         self.resume_filename = temp_name
+
+    def _remove_tmp_model(self, num_epochs):
+        resume_file = os.path.join(self.option.get_working_dir(), self.resume_filename)
+        os.unlink(resume_file)
 
     def save_model(self, name):
         save_file = os.path.join(self.option.get_working_dir(), f'{name}')

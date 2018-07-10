@@ -11,7 +11,6 @@ class RunOption(dict):
         'file_name': 'option'
     }
 
-    _attrs = ['root_dir', 'save_dir', 'file_name']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

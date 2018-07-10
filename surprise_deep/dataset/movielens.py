@@ -3,6 +3,7 @@ import torch
 import torch.utils.data as data
 import pandas as pd
 from random import shuffle
+import numpy as np
 from .movielens_processor import MovielensProcessor
 
 
@@ -43,7 +44,7 @@ class Movielens(data.Dataset):
         self.data_processor.map_dataset()
         self.data_processor.split_train_test_dataset()
 
-    def get_mini_batch(self, input_dim, batch_size=1, ):
+    def get_mini_batch(self, input_dim, batch_size=1, test_masking_rate=0):
         if not isinstance(self.data[self.is_train_set], pd.DataFrame):
             self._load_data()
 
@@ -51,18 +52,26 @@ class Movielens(data.Dataset):
         sparse_column_index = []
         sparse_value = []
 
-        #shuffle to random group order
+        # shuffle to random group order
         random_groups = []
         for index, group in self.group_data:
             random_groups.append(group)
         shuffle(random_groups)
+        pivot_indexes = self.option.pivot_indexes
         for index, group in enumerate(random_groups):
-            sparse_row_index += group.iloc[:, 0].tolist()
-            sparse_column_index += group.iloc[:, 1].tolist()
+            sparse_row_index += group.iloc[:, pivot_indexes[0]].tolist()
+            sparse_column_index += group.iloc[:, pivot_indexes[1]].tolist()
             sparse_value += group.iloc[:, 2].tolist()
+
+            # make certain % of input_values become zero
+            if test_masking_rate > 0:
+                random_mask_index = np.random.randint(0, len(sparse_value) - 1,
+                                                      int(len(sparse_value) * test_masking_rate))
             if (index + 1) % batch_size == 0 or index == (len(random_groups) - 1):
                 i_torch = torch.LongTensor([sparse_row_index, sparse_column_index])
                 v_torch = torch.FloatTensor(sparse_value)
+                if test_masking_rate > 0:
+                    v_torch[random_mask_index] = 0
                 mini_batch = torch.sparse.FloatTensor(i_torch, v_torch,
                                                       torch.Size([max(sparse_row_index) + 1, input_dim]))
                 yield sparse_row_index, sparse_column_index, sparse_value, mini_batch
