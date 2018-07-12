@@ -9,7 +9,7 @@ class MovielensProcessor():
     """`MovieLens <https://grouplens.org/datasets/movielens/>`_ Dataset
 
     """
-    _ds_names = ['100k', '1m', '10m', '20m', '26m', 'serendipity']
+    _ds_names = ['100k', '1m', '10m', '20m', '26m', 'serendipity', '100k_old']
 
     _urls = {
         _ds_names[0]: {
@@ -47,6 +47,12 @@ class MovielensProcessor():
             'file': 'http://files.grouplens.org/datasets/serendipity-sac2018/serendipity-sac2018.zip',
             'year': 2018,
 
+        },
+        _ds_names[6]: {
+            'file': 'http://files.grouplens.org/datasets/movielens/ml-100k.zip',
+            'year': 1998,
+            'delimiter': '\t',
+            'rating_file': 'u.data'
         }
     }
 

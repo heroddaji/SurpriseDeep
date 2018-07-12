@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
+import timeit
 import numpy as np
 
 
@@ -15,8 +16,9 @@ class Autoencoder(AlgoBaseDeep):
 
     def __init__(self, model_option, input_dim):
         super().__init__()
+        self.device = torch.device('cpu')
         if torch.cuda.is_available():
-            self = self.cuda()
+            self.device = torch.device('cuda')
         self.option = model_option
         self.logger = self.option.logger()
         self.train_ds = None
@@ -41,6 +43,8 @@ class Autoencoder(AlgoBaseDeep):
         self.encoder_w = nn.ParameterList(
             [nn.Parameter(torch.rand(self.layers[i + 1], self.layers[i])) for i in range(len(self.layers) - 1)]
         )
+        self.encoder_w = self.encoder_w.to(device=self.device)
+
         for index, w in enumerate(self.encoder_w):
             init.xavier_uniform_(w)
 
@@ -48,12 +52,14 @@ class Autoencoder(AlgoBaseDeep):
         self.encoder_bias = nn.ParameterList(
             [nn.Parameter(torch.zeros(self.layers[i + 1])) for i in range(len(self.layers) - 1)]
         )
+        self.encoder_bias = self.encoder_bias.to(device=self.device)
 
         # init the decoder weight
         reverse_layers = list(reversed(self.layers))
         self.decoder_w = nn.ParameterList(
             [nn.Parameter(torch.rand(reverse_layers[i + 1], reverse_layers[i])) for i in range(len(reverse_layers) - 1)]
         )
+        self.decoder_w = self.decoder_w.to(device=self.device)
         for index, w in enumerate(self.decoder_w):
             init.xavier_uniform_(w)
 
@@ -61,6 +67,7 @@ class Autoencoder(AlgoBaseDeep):
         self.decoder_bias = nn.ParameterList(
             [nn.Parameter(torch.zeros(reverse_layers[i + 1])) for i in range(len(reverse_layers) - 1)]
         )
+        self.decoder_bias = self.decoder_bias.to(device=self.device)
 
     def _resume_training(self):
         if self.option.resume_training:
@@ -85,6 +92,8 @@ class Autoencoder(AlgoBaseDeep):
         for index, w in enumerate(self.decoder_w):
             input = F.linear(input=z, weight=w, bias=self.decoder_bias[index])
             kind = self.option.activation if index != len(self.layers) - 1 else 'none'
+            if kind == 'none':
+                a = 0
             z = self.activation(input=input, kind=kind)
         return z
 
@@ -102,17 +111,17 @@ class Autoencoder(AlgoBaseDeep):
         if self.resume_epoch is not None:
             resume_e = int(self.resume_epoch)
             self.resume_epoch = None
-
+        start_time = timeit.default_timer()
         for epoch in range(resume_e, num_epochs):
             self.train()
             for index, (sparse_row_index, sparse_column_index, sparse_rating, mini_batch) in enumerate(
                     train_ds.get_mini_batch(batch_size=self.option.train_batch_size, input_dim=self.input_dim)):
                 # todo: check cuda
                 optimizer.zero_grad()
-                inputs = mini_batch.to_dense()
+                inputs = mini_batch.to_dense().to(device=self.device)
                 outputs = self.forward(inputs)
                 loss = self.MMSEloss(outputs, inputs)
-                self.logger.debug(f'epoch {epoch} - loss:{loss}')
+                self.logger.debug_(f'epoch {epoch} - loss:{loss}')
                 loss.backward()
                 optimizer.step()
 
@@ -122,6 +131,8 @@ class Autoencoder(AlgoBaseDeep):
             self.logger.debug(f'epoch:{epoch}, RMSE:{sqrt(total_loss/total_loss_denom)}')
             self._save_tmp_model(epoch)
 
+        stop_time = timeit.default_timer()
+        self.logger.debug(f'Learn in: {stop_time-start_time} seconds')
         self._remove_tmp_model(num_epochs)
 
     def evaluate(self, eval_ds, infer_name):
@@ -139,13 +150,14 @@ class Autoencoder(AlgoBaseDeep):
                                            input_dim=self.input_dim,
                                            test_masking_rate=self.option.test_masking_rate)):
                 # todo: check for cuda
-                inputs = mini_batch.to_dense()
+                inputs = mini_batch.to_dense().to(device=self.device)
                 outputs = self.forward(inputs)
                 assert (inputs.shape[0] == outputs.shape[0])
                 assert (inputs.shape[1] == outputs.shape[1])
                 for i in range(len(sparse_row_index)):
                     predict_value = outputs[sparse_row_index[i], sparse_column_index[i]]
-                    self.logger.debug(f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}:{predict_value}')
+                    self.logger.debug_(
+                        f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}:{predict_value}')
                     infer_f.write(f'{sparse_row_index[i]},'
                                   f'{sparse_column_index[i]},'
                                   f'{sparse_rating[i]},'

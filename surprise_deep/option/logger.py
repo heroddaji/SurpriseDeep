@@ -13,6 +13,9 @@ class FileLogger:
         print(msg)
         logging.debug(msg)
 
+    def debug_(self, msg):
+        print(msg)
+
     def info(self, msg):
         print(msg)
         logging.info(msg)
