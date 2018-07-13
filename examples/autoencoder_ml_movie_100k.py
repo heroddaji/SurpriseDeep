@@ -10,7 +10,7 @@ print(sys.path)
 
 from surprise_deep import *
 
-pre_train = True
+pre_train = False
 
 if not pre_train:
     ml_option_100k = DatasetOption(root_dir='ds_movielens', ds_name='100k', save_dir='100k_items')
