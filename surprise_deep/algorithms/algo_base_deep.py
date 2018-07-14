@@ -43,12 +43,11 @@ class AlgoBaseDeep(nn.Module):
             optimizer = optim.Adagrad(self.parameters(),
                                       lr=option.learning_rate,
                                       weight_decay=option.weight_decay)
-        elif kind == 'momentum':
+        elif kind == 'sgd':
             optimizer = optim.SGD(self.parameters(),
                                   lr=option.learning_rate,
                                   momentum=0.9,
                                   weight_decay=option.weight_decay)
-            scheduler = MultiStepLR(optimizer, milestones=[24, 36, 48, 66, 72], gamma=0.5)
         elif kind == "rmsprop":
             optimizer = optim.RMSprop(self.parameters(),
                                       lr=option.learning_rate,
@@ -59,8 +58,8 @@ class AlgoBaseDeep(nn.Module):
 
         return optimizer
 
-    def MMSEloss(self, inputs, targets):
-        mask = targets != 0
+    def MMSEloss(self, inputs, targets, mask_value=0.0):
+        mask = targets != mask_value
         num_rating = torch.sum(mask.float())
         # todo: size_average option?
         size_average = False

@@ -1,6 +1,7 @@
 import os
 import json
 import shutil
+import logging
 from .logger import FileLogger
 
 
@@ -10,7 +11,6 @@ class RunOption(dict):
         'save_dir': 'save_dir',
         'file_name': 'option'
     }
-
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -63,9 +63,9 @@ class RunOption(dict):
     def deleteOption(self):
         shutil.rmtree(self.root_dir)
 
-    def logger(self):
+    def logger(self, level=logging.DEBUG):
         file_path = os.path.join(self.root_dir, self.save_dir, 'log.txt')
-        return FileLogger(file_path)
+        return FileLogger(file_path, level)
 
     def get_working_dir(self):
         return os.path.join(self.root_dir, self.save_dir)

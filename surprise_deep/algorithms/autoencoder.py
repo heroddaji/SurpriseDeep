@@ -1,5 +1,7 @@
 from math import sqrt
 
+from torch.autograd import Variable
+
 from .algo_base_deep import AlgoBaseDeep
 
 import os
@@ -9,6 +11,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 import timeit
 import numpy as np
+import logging
 
 
 class Autoencoder(AlgoBaseDeep):
@@ -20,7 +23,7 @@ class Autoencoder(AlgoBaseDeep):
         if torch.cuda.is_available():
             self.device = torch.device('cuda')
         self.option = model_option
-        self.logger = self.option.logger()
+        self.logger = self.option.logger(level=logging.INFO)
         self.train_ds = None
         self.test_ds = None
         self.input_dim = input_dim
@@ -88,13 +91,24 @@ class Autoencoder(AlgoBaseDeep):
         return x
 
     def decode(self, z):
-        # todo: check for constrained autoencoder
-        for index, w in enumerate(self.decoder_w):
-            input = F.linear(input=z, weight=w, bias=self.decoder_bias[index])
-            kind = self.option.activation if index != len(self.layers) - 1 else 'none'
-            if kind == 'none':
-                a = 0
-            z = self.activation(input=input, kind=kind)
+        if self.option.decoder_constraint:
+            for index, w in enumerate(
+                    list(reversed(self.encoder_w))):  # constrained autoencode re-uses weights from encoder
+                input = F.linear(input=z, weight=w.transpose(0, 1), bias=self.decoder_bias[index])
+                kind = self.option.activation
+                if index == len(self.layers) - 2:
+                    if not self.option.last_layer_activations:
+                        kind = 'none'
+                z = self.activation(input=input, kind=kind)
+        else:
+            for index, w in enumerate(self.decoder_w):
+                input = F.linear(input=z, weight=w, bias=self.decoder_bias[index])
+                kind = self.option.activation
+                if index == len(self.layers) - 2:
+                    if not self.option.last_layer_activations:
+                        kind = 'none'
+                z = self.activation(input=input, kind=kind)
+
         return z
 
     def forward(self, x):
@@ -112,13 +126,20 @@ class Autoencoder(AlgoBaseDeep):
             resume_e = int(self.resume_epoch)
             self.resume_epoch = None
         start_time = timeit.default_timer()
+
+        dp = nn.Dropout(p=self.option.noise_prob)
+
         for epoch in range(resume_e, num_epochs):
             self.train()
             for index, (sparse_row_index, sparse_column_index, sparse_rating, mini_batch) in enumerate(
                     train_ds.get_mini_batch(batch_size=self.option.train_batch_size, input_dim=self.input_dim)):
-                # todo: check cuda
                 optimizer.zero_grad()
                 inputs = mini_batch.to_dense().to(device=self.device)
+                mask_value = 0.0
+                if self.option.normalize_data:
+                    mask = ((inputs == 0) * 3.0).float()
+                    inputs.add_(mask)
+                    mask_value = 3.0
                 outputs = self.forward(inputs)
                 loss = self.MMSEloss(outputs, inputs)
                 self.logger.debug_(f'epoch {epoch} - loss:{loss}')
@@ -128,11 +149,24 @@ class Autoencoder(AlgoBaseDeep):
                 total_loss += loss.item()
                 total_loss_denom += 1
 
-            self.logger.debug(f'epoch:{epoch}, RMSE:{sqrt(total_loss/total_loss_denom)}')
+                if self.option.aug_step > 0:
+                    # Magic data augmentation trick happen here
+                    for t in range(self.option.aug_step):
+                        inputs = Variable(outputs.data)
+                        if self.option.noise_prob > 0.0:
+                            inputs = dp(inputs)
+                        optimizer.zero_grad()
+                        outputs = self.forward(inputs)
+                        loss = self.MMSEloss(outputs, inputs)
+                        loss.backward()
+                        optimizer.step()
+
+            self.logger.debug(
+                f'epoch:{epoch}, RMSE:{sqrt(total_loss/total_loss_denom)}, total_lost:{total_loss}, denom:{total_loss_denom}')
             self._save_tmp_model(epoch)
 
         stop_time = timeit.default_timer()
-        self.logger.debug(f'Learn in: {stop_time-start_time} seconds')
+        self.logger.info(f'Learn in: {stop_time-start_time} seconds')
         self._remove_tmp_model(num_epochs)
 
     def evaluate(self, eval_ds, infer_name):
@@ -149,14 +183,16 @@ class Autoencoder(AlgoBaseDeep):
                     eval_ds.get_mini_batch(batch_size=self.option.test_batch_size,
                                            input_dim=self.input_dim,
                                            test_masking_rate=self.option.test_masking_rate)):
-                # todo: check for cuda
                 inputs = mini_batch.to_dense().to(device=self.device)
+                if self.option.normalize_data:
+                    mask = ((inputs == 0) * 3.0).float()
+                    inputs.add_(mask)
                 outputs = self.forward(inputs)
                 assert (inputs.shape[0] == outputs.shape[0])
                 assert (inputs.shape[1] == outputs.shape[1])
                 for i in range(len(sparse_row_index)):
                     predict_value = outputs[sparse_row_index[i], sparse_column_index[i]]
-                    self.logger.debug_(
+                    self.logger.info_(
                         f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}:{predict_value}')
                     infer_f.write(f'{sparse_row_index[i]},'
                                   f'{sparse_column_index[i]},'
@@ -179,7 +215,9 @@ class Autoencoder(AlgoBaseDeep):
                 except Exception as e:
                     continue
 
-        self.logger.debug(f'RMSE {sqrt(denominator / count)}')
+        rmse = sqrt(denominator / count)
+        self.logger.info(f'RMSE {rmse}')
+        return rmse
 
     def _save_tmp_model(self, epoch):
         temp_name = f'{self.tmp_name}{epoch}'
@@ -201,7 +239,7 @@ class Autoencoder(AlgoBaseDeep):
     def load_model(self, name):
         try:
             load_file = os.path.join(self.option.get_working_dir(), f'{name}')
-            self.logger.debug(f'load model:{load_file}')
+            self.logger.info(f'load model:{load_file}')
             self.load_state_dict(torch.load(load_file))
             return True
         except Exception as e:

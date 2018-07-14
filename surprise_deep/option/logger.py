@@ -2,12 +2,12 @@ import logging
 
 
 class FileLogger:
-    def __init__(self, file_path):
+    def __init__(self, file_path, level=logging.DEBUG):
         self.log_file = file_path
         logging.basicConfig(format='%(levelname)s:%(asctime)s:%(message)s',
                             datefmt='%m/%d-%H:%M:%S',
                             filename=self.log_file,
-                            level=logging.DEBUG)
+                            level=level)
 
     def debug(self, msg):
         print(msg)
@@ -19,6 +19,9 @@ class FileLogger:
     def info(self, msg):
         print(msg)
         logging.info(msg)
+
+    def info_(self, msg):
+        print(msg)
 
     def warning(self, msg):
         print(msg)

@@ -1,4 +1,9 @@
-- logger
-- separate dataset into folder save_dir
-- test with other dataset, make flow to run them all
-- draw some evaluation
+- last layer activation -> done
+- decode constraint -> done
+- momentum scheduler -> skip
+- singular run -> done
+- normalize_data -> wip
+- random run
+
+
+quansat: distrubtion of test rating
