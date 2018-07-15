@@ -3,6 +3,14 @@ import errno
 import pandas as pd
 from six.moves import urllib
 from sklearn.model_selection import train_test_split
+import shutil
+
+mapping_item_name = 'map_movie_id.csv'
+mapping_user_name = 'map_user_id.csv'
+mapping_rating_name = 'map_rating.csv'
+mapping_user_mean_name = 'map_user_mean.csv'
+mapping_movie_mean_name = 'map_movie_mean.csv'
+mapping_rating_norm_name = 'map_rating_norm.csv'
 
 
 class MovielensProcessor():
@@ -73,12 +81,12 @@ class MovielensProcessor():
         self.rating_file_name = url_dict['rating_file']
         self.filename_zip = self.url.rpartition('/')[2]
         self.filename = self.filename_zip.replace('.zip', '')
-        self.file_path_zip = os.path.join(self.root, self.save_dir, self._raw_folder, self.ds_name, self.filename_zip)
-        self.ds_folder = os.path.join(self.root, self.save_dir, self._raw_folder, self.ds_name)
+        self.file_path_zip = os.path.join(self.root, self.save_dir, self._raw_folder, self.filename_zip)
+        self.ds_folder = os.path.join(self.root, self.save_dir, self._raw_folder)
 
     def download(self):
         force = self.option.force_download
-        self._create_dataset_dir(self._raw_folder, self.ds_name)
+        self._create_dataset_dir(self._raw_folder)
         if self._check_exists(self.file_path_zip) and not force:
             self.logger.debug('file: ' + self.filename_zip + ' existed, skip download')
         else:
@@ -87,28 +95,28 @@ class MovielensProcessor():
             with open(self.file_path_zip, 'wb') as f:
                 f.write(data.read())
 
-        self._unzip_file(self.file_path_zip, self.ds_name)
+        self._unzip_file(self.file_path_zip)
 
     # todo: later optimize procesing data with saving checkpoint
     def map_dataset(self):
         force = self.option.force_map
-        done_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name, 'done')
+        done_file = os.path.join(self.root, self.save_dir, self._mapping_folder, 'done')
         if os.path.exists(done_file) and not force:
             self.logger.debug(f'Already mapped dataset {self.ds_name}, skip.')
             return
 
-        self._create_dataset_dir(self._mapping_folder, self.ds_name)
+        self._create_dataset_dir(self._mapping_folder)
         raw_rating_file = os.path.join(self.ds_folder, self.filename, self.rating_file_name)
-        user_id_map_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name, 'map_user_id.csv')
-        movie_id_map_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name,
-                                         'map_movie_id.csv')
-        map_rating_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name, 'map_rating.csv')
+        user_id_map_file = os.path.join(self.root, self.save_dir, self._mapping_folder, mapping_user_name)
+        movie_id_map_file = os.path.join(self.root, self.save_dir, self._mapping_folder,
+                                         mapping_item_name)
+        map_rating_file = os.path.join(self.root, self.save_dir, self._mapping_folder, mapping_rating_name)
 
         map_user_map = {}
-        map_user_str = ''
+        map_user_str = 'newId,originalId\n'
         map_movie_map = {}
-        map_movie_str = ''
-        map_rating_str = ''
+        map_movie_str = 'newId,originalId\n'
+        map_rating_str = 'userId,movieId,rating,timestamp\n'
 
         user_count = 0
         movie_count = 0
@@ -132,7 +140,7 @@ class MovielensProcessor():
                     if raw_user_id not in map_user_map:
                         map_user_map[raw_user_id] = user_count
                         temp_user_id = user_count
-                        map_user_str += f'{temp_user_id},{raw_user_id}'
+                        map_user_str += f'{temp_user_id},{raw_user_id}\n'
                         user_count += 1
                     else:
                         temp_user_id = map_user_map[raw_user_id]
@@ -140,7 +148,7 @@ class MovielensProcessor():
                     if raw_movie_id not in map_movie_map:
                         map_movie_map[raw_movie_id] = movie_count
                         temp_movie_id = movie_count
-                        map_movie_str += f'{temp_movie_id},{raw_movie_id}'
+                        map_movie_str += f'{temp_movie_id},{raw_movie_id}\n'
                         movie_count += 1
                     else:
                         temp_movie_id = map_movie_map[raw_movie_id]
@@ -165,18 +173,21 @@ class MovielensProcessor():
 
     def split_train_test_dataset(self):
         force = self.option.force_split
-        self._create_dataset_dir(self._processed_folder, self.ds_name)
-        done_file = os.path.join(self.root, self.save_dir, self._processed_folder, self.ds_name, 'done')
+        self._create_dataset_dir(self._processed_folder)
+        done_file = os.path.join(self.root, self.save_dir, self._processed_folder, 'done')
         if os.path.exists(done_file) and not force:
             self.logger.debug(f'Already processed dataset {self.ds_name}, skip.')
             return
 
         self.logger.debug(f'Processed dataset {self.ds_name}...')
-        map_rating_file = os.path.join(self.root, self.save_dir, self._mapping_folder, self.ds_name, 'map_rating.csv')
-        train_file = os.path.join(self.root, self.save_dir, self._processed_folder, self.ds_name, 'train.csv')
-        test_file = os.path.join(self.root, self.save_dir, self._processed_folder, self.ds_name, 'test.csv')
-        df = pd.read_csv(map_rating_file, names=['userId', 'movieId', 'rating', 'timestamp'])
-
+        map_rating_file = os.path.join(self.root, self.save_dir, self._mapping_folder, mapping_rating_name)
+        train_file = os.path.join(self.root, self.save_dir, self._processed_folder, 'train.csv')
+        test_file = os.path.join(self.root, self.save_dir, self._processed_folder, 'test.csv')
+        if self.option.normalize_mapping:
+            df = pd.read_csv(map_rating_file,
+                             names=['userId', 'movieId', 'rating', 'timestamp', 'normUserRating', 'normMovieRating'])
+        else:
+            df = pd.read_csv(map_rating_file, names=['userId', 'movieId', 'rating', 'timestamp'])
         test_split_rate = self.option.test_split_rate
         train_ds, test_ds = train_test_split(df, test_size=test_split_rate)
 
@@ -185,12 +196,91 @@ class MovielensProcessor():
         with open(done_file, 'w') as f:
             f.write('done')
 
-    def _check_exists(self, file_path):
-        return os.path.exists(os.path.realpath(file_path))
+    def normalize_user_data(self):
+        map_rating_file = os.path.join(self.option.get_working_dir(), self._mapping_folder,
+                                       mapping_rating_name)
+        map_user_mean_file = os.path.join(self.option.get_working_dir(), self._mapping_folder,
+                                          mapping_user_mean_name)
+        if os.path.exists(map_user_mean_file):
+            self.logger.debug(f'Already processed user mean {self.ds_name}, skip.')
+            return
 
-    def _unzip_file(self, file_path, ds_folder):
-        extract_folder = os.path.join(self.root, self.save_dir, self._raw_folder, self.ds_name)
-        if os.path.exists(os.path.join(ds_folder, self.filename)):
+        df = pd.read_csv(map_rating_file)
+        pivot_indexes = self.option.pivot_indexes
+        group_user_key = self.option.rating_columns[pivot_indexes[0]]
+        group_data = df.groupby(group_user_key)
+        user_mean = 'userId,mean,count\n'
+        for index, group in enumerate(group_data):
+            user_df = group[1]
+            user_id = group[0]
+            user_mean += f"{user_id},{user_df['rating'].mean()},{user_df['rating'].count()}\n"
+        with open(map_user_mean_file, 'w') as f:
+            f.write(user_mean)
+
+    def normalize_movie_data(self):
+        map_rating_file = os.path.join(self.option.get_working_dir(), self._mapping_folder,
+                                       mapping_rating_name)
+        map_movie_mean_file = os.path.join(self.option.get_working_dir(), self._mapping_folder,
+                                           mapping_movie_mean_name)
+
+        if os.path.exists(map_movie_mean_file):
+            self.logger.debug(f'Already processed movie mean {self.ds_name}, skip.')
+            return
+
+        df = pd.read_csv(map_rating_file)
+        pivot_indexes = self.option.pivot_indexes
+        group_movie_key = self.option.rating_columns[pivot_indexes[1]]
+        group_data = df.groupby(group_movie_key)
+        movie_mean = 'movieId,mean,count\n'
+        for index, group in enumerate(group_data):
+            movie_df = group[1]
+            movie_id = group[0]
+            movie_mean += f"{movie_id},{movie_df['rating'].mean()},{movie_df['rating'].count()}\n"
+        with open(map_movie_mean_file, 'w') as f:
+            f.write(movie_mean)
+
+    def normalize_rating_data(self):
+        map_movie_mean_file = os.path.join(self.option.get_working_dir(), self._mapping_folder,
+                                           mapping_movie_mean_name)
+        map_user_mean_file = os.path.join(self.option.get_working_dir(), self._mapping_folder,
+                                          mapping_user_mean_name)
+        map_rating_file = os.path.join(self.option.get_working_dir(), self._mapping_folder,
+                                       mapping_rating_name)
+        map_rating_norm_file = os.path.join(self.option.get_working_dir(), self._mapping_folder,
+                                            mapping_rating_norm_name)
+        if os.path.exists(map_rating_norm_file):
+            self.logger.debug(f'Already processed rating mean {self.ds_name}, skip.')
+            return
+        else:
+            self.logger.debug(f'Processing rating mean for dataset {self.ds_name} ')
+
+        user_mean_df = pd.read_csv(map_user_mean_file)
+        movie_mean_df = pd.read_csv(map_movie_mean_file)
+        map_rating_df = pd.read_csv(map_rating_file)
+        normalized_rating_content = 'userId,movieId,rating,timestamp,normUserRating,normMovieRating\n'
+
+        # todo: add normalized rating and replace rating file, how to do it better?
+        for index, row in map_rating_df.iterrows():
+            userId = int(row['userId'])
+            movieId = int(row['movieId'])
+            rating = row['rating']
+            timestamp = row['timestamp']
+            user_mean = user_mean_df['mean'][userId]
+            movie_mean = movie_mean_df['mean'][movieId]
+            normalized_rating_content += f'{userId},{movieId},{rating},{timestamp},{rating-user_mean},{rating-movie_mean}\n'
+
+        with open(map_rating_norm_file, 'w') as f:
+            f.write(normalized_rating_content)
+
+        os.remove(map_rating_file)
+        shutil.copy2(map_rating_norm_file, map_rating_file)
+
+    def _check_exists(self, file_path):
+        return os.path.exists(file_path)
+
+    def _unzip_file(self, file_path):
+        extract_folder = os.path.join(self.root, self.save_dir, self._raw_folder)
+        if os.path.exists(self.filename):
             return
 
         import zipfile
@@ -198,9 +288,9 @@ class MovielensProcessor():
             self.logger.debug('Unzipping ' + file_path)
             out_f.extractall(extract_folder)
 
-    def _create_dataset_dir(self, dir, ds_name):
+    def _create_dataset_dir(self, dir):
         try:
-            os.makedirs(os.path.join(self.root, self.save_dir, dir, ds_name))
+            os.makedirs(os.path.join(self.root, self.save_dir, dir))
         except OSError as e:
             if e.errno == errno.EEXIST:
                 pass

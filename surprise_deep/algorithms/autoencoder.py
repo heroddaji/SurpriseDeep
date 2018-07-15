@@ -11,6 +11,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 import timeit
 import numpy as np
+import pandas as pd
 import logging
 
 
@@ -132,14 +133,10 @@ class Autoencoder(AlgoBaseDeep):
         for epoch in range(resume_e, num_epochs):
             self.train()
             for index, (sparse_row_index, sparse_column_index, sparse_rating, mini_batch) in enumerate(
-                    train_ds.get_mini_batch(batch_size=self.option.train_batch_size, input_dim=self.input_dim)):
+                    train_ds.get_mini_batch(batch_size=self.option.train_batch_size, input_dim=self.input_dim,
+                                            is_normalize=self.option.normalize_data)):
                 optimizer.zero_grad()
                 inputs = mini_batch.to_dense().to(device=self.device)
-                mask_value = 0.0
-                if self.option.normalize_data:
-                    mask = ((inputs == 0) * 3.0).float()
-                    inputs.add_(mask)
-                    mask_value = 3.0
                 outputs = self.forward(inputs)
                 loss = self.MMSEloss(outputs, inputs)
                 self.logger.debug_(f'epoch {epoch} - loss:{loss}')
@@ -172,10 +169,17 @@ class Autoencoder(AlgoBaseDeep):
     def evaluate(self, eval_ds, infer_name):
         self.eval()
         infer_file = os.path.join(self.option.root_dir, self.option.save_dir, infer_name)
-
         with open(infer_file, 'w') as infer_f:
             first_column_name = eval_ds.option.rating_columns[eval_ds.option.pivot_indexes[0]]
             second_column_name = eval_ds.option.rating_columns[eval_ds.option.pivot_indexes[1]]
+            mean_df = None
+            if self.option.normalize_data:
+                # todo:hardcode code
+                if first_column_name == 'userId':
+                    mean_df = pd.read_csv(os.path.join(eval_ds.option.get_working_dir(), 'map', 'map_user_mean.csv'))
+                elif first_column_name == 'movieId':
+                    mean_df = pd.read_csv(os.path.join(eval_ds.option.get_working_dir(), 'map', 'map_movie_mean.csv'))
+
             third_column_name = 'actual_rating'
             fourth_column_name = 'infer_rating'
             infer_f.write(f'{first_column_name},{second_column_name},{third_column_name},{fourth_column_name}\n')
@@ -184,14 +188,15 @@ class Autoencoder(AlgoBaseDeep):
                                            input_dim=self.input_dim,
                                            test_masking_rate=self.option.test_masking_rate)):
                 inputs = mini_batch.to_dense().to(device=self.device)
-                if self.option.normalize_data:
-                    mask = ((inputs == 0) * 3.0).float()
-                    inputs.add_(mask)
                 outputs = self.forward(inputs)
                 assert (inputs.shape[0] == outputs.shape[0])
                 assert (inputs.shape[1] == outputs.shape[1])
                 for i in range(len(sparse_row_index)):
                     predict_value = outputs[sparse_row_index[i], sparse_column_index[i]]
+                    if self.option.normalize_data:
+                        mean = mean_df['mean'][sparse_row_index[i]]
+                        predict_value += mean
+                        s = 0
                     self.logger.info_(
                         f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}:{predict_value}')
                     infer_f.write(f'{sparse_row_index[i]},'

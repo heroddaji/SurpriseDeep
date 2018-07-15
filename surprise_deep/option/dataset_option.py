@@ -23,6 +23,7 @@ class DatasetOption(RunOption):
         ],
         'rating_columns_unique_count': [0, 0, 0, 0],
         'test_split_rate': 0.3,
+        'normalize_mapping': True
     }
 
     def __init__(self, **kwargs):

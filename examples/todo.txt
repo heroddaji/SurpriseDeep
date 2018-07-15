@@ -2,8 +2,12 @@
 - decode constraint -> done
 - momentum scheduler -> skip
 - singular run -> done
-- normalize_data -> wip
+- normalize_data -> done
+- all singer run should work -> wip
 - random run
-
+- test on all datasets
+- more optimizer?
+- more sgd?
+-genereliize dataset
 
 quansat: distrubtion of test rating

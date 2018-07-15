@@ -1,5 +1,4 @@
 from .algorithms import *
-from .model_selection import *
 from .dataset import *
 from .utils import *
 from .option import *
