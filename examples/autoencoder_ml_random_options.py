@@ -136,8 +136,8 @@ def run_random(repeat=1000, pivot_indexes=[0, 1]):
             elif model_option.get(key, None) != None:
                 model_option[key] = value
 
-        # rmse = execute(ds_option, model_option)
-        rmse = 1
+        rmse = execute(ds_option, model_option)
+        # rmse = 1
         rmses.append(rmse)
         write_msg(ds_option, model_option, sum(rmses) / float(len(rmses)))
 
