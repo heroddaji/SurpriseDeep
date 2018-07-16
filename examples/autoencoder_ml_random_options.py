@@ -27,7 +27,6 @@ param_options = {
     'random_data_each_epoch': [True, False],
     'last_layer_activations': [True, False],
     'aug_step': [0, 1, 2, 3],
-    # 'pivot_indexes': [[0, 1], [0, 1]],
     'RMSE': 0
 }
 
@@ -71,6 +70,9 @@ def execute(ds_option, model_option):
 
 def run_single(pivot_indexes=[0, 1]):
     for key, values in param_options.items():
+        if key == 'RMSE':
+            continue
+
         for value in values:
             rmses = []
             for i in range(2):
@@ -85,12 +87,53 @@ def run_single(pivot_indexes=[0, 1]):
             write_msg(ds_option, model_option, sum(rmses) / float(len(rmses)))
 
 
-def run_random():
-    pass
+def run_random(repeat=1000, pivot_indexes=[0, 1]):
+    all_options = {}
+    random_key = ''
+    rmses = []
+    count = 0
+
+    while (count < repeat):
+        count += 1
+        random_option = {}
+        for key, values in param_options.items():
+            if key == 'RMSE':
+                continue
+            random_value = ''
+            if key == 'hidden_layers':
+                layers_num = [1, 2, 3, 4, 5]
+                random_max_layer = random.choice(layers_num)
+                layers = []
+                for i in range(random_max_layer):
+                    layers.append(random.choice(values))
+                random_option[key] = layers
+            else:
+                random_value = random.choice(values)
+                random_option[key] = random_value
+            random_key += f'{key}_{str(random_value)}_'
+
+        if all_options.get(random_key, None) != None:
+            print('option already executed, skip')
+            continue
+        else:
+            all_options[random_key] = random_option
+
+        (ds_option, model_option) = get_default_options()
+        ds_option.pivot_indexes = pivot_indexes
+        for key, value in random_option.items():
+            if ds_option.get(key, None) != None:
+                ds_option[key] = value
+            elif model_option.get(key, None) != None:
+                model_option[key] = value
+
+        rmse = execute(ds_option, model_option)
+        # rmse = 1
+        rmses.append(rmse)
+        write_msg(ds_option, model_option, sum(rmses) / float(len(rmses)))
 
 
 if __name__ == '__main__':
-    recorder = Recorder(root_dir="recsys_deeplearning", save_dir="autoencoder_100k")
+    recorder = Recorder(root_dir="recsys_deeplearning", save_dir="autoencoder_100k_alloption_singlerun")
     recorder.open()
     column_names = ''
     for item in list(param_options.keys()):
@@ -100,5 +143,11 @@ if __name__ == '__main__':
     recorder.write_line(column_names)
     # run_single()
     recorder.write_line('run for movie')
-    run_single(pivot_indexes=[1, 0])
+    # run_single(pivot_indexes=[1, 0])
+
+    recorder.write_line('run random for user')
+    run_random(repeat=10000)
+    recorder.write_line('run random for movie')
+    run_random(repeat=10000, pivot_indexes=[1, 0])
+
     recorder.close()

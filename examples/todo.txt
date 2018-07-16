@@ -4,8 +4,8 @@
 - singular run -> done
 - normalize_data -> done
 - all singer run should work -> done
-- random run -> wip
-- test on all datasets
+- random run -> done
+- test on all datasets -> wip
 - fix log
 - more optimizer?
 - more sgd?
