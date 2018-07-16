@@ -1,3 +1,4 @@
+import math
 from math import sqrt
 
 from torch.autograd import Variable
@@ -198,7 +199,9 @@ class Autoencoder(AlgoBaseDeep):
                         predict_value += mean
 
                     if self.option.prediction_floor:
-                        if predict_value < 0:
+                        if math.isnan(predict_value):
+                            predict_value = 2.5
+                        elif predict_value < 0:
                             predict_value = 0
                         elif predict_value > 5:
                             predict_value = 5
