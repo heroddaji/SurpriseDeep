@@ -26,6 +26,7 @@ param_options = {
     'test_split_rate': [0.1, 0.2, 0.3, 0.4],
     'last_layer_activations': [True, False],
     'aug_step': [0, 1, 2, 3],
+    'pivot_indexes': [[0, 1], [1, 0]],
     'RMSE': 0
 }
 
@@ -69,7 +70,7 @@ def execute(ds_option, model_option):
     return rmse
 
 
-def run_single(pivot_indexes=[0, 1]):
+def run_single():
     for key, values in param_options.items():
         if key == 'RMSE':
             continue
@@ -78,7 +79,6 @@ def run_single(pivot_indexes=[0, 1]):
             rmses = []
             for i in range(2):
                 (ds_option, model_option) = get_default_options()
-                ds_option.pivot_indexes = pivot_indexes
                 if key == 'hidden_layers':
                     model_option[key] = [value]
                 else:
@@ -88,7 +88,7 @@ def run_single(pivot_indexes=[0, 1]):
             write_msg(ds_option, model_option, sum(rmses) / float(len(rmses)))
 
 
-def run_random(repeat=1000, pivot_indexes=[0, 1]):
+def run_random(repeat=1000):
     all_options = {}
     random_key = ''
     rmses = []
@@ -128,7 +128,6 @@ def run_random(repeat=1000, pivot_indexes=[0, 1]):
             all_options[random_key] = random_option
 
         (ds_option, model_option) = get_default_options()
-        ds_option.pivot_indexes = pivot_indexes
         for key, value in random_option.items():
             if ds_option.get(key, None) != None:
                 ds_option[key] = value
@@ -154,9 +153,6 @@ if __name__ == '__main__':
     # recorder.write_line('run for movie')
     # run_single(pivot_indexes=[1, 0])
 
-    recorder.write_line('run random for user')
-    run_random(repeat=1000)
-    recorder.write_line('run random for movie')
-    run_random(repeat=1000, pivot_indexes=[1, 0])
+    run_random(repeat=5000)
 
     recorder.close()
