@@ -24,7 +24,6 @@ param_options = {
     'normalize_data': [True, False],
     'prediction_floor': [True, False],
     'test_split_rate': [0.1, 0.2, 0.3, 0.4],
-    'random_data_each_epoch': [True, False],
     'last_layer_activations': [True, False],
     'aug_step': [0, 1, 2, 3],
     'RMSE': 0
@@ -149,10 +148,10 @@ if __name__ == '__main__':
     for item in list(param_options.keys()):
         column_names += item + ','
     column_names = column_names[0:len(column_names) - 1]
-    recorder.write_line('run for user')
-    recorder.write_line(column_names)
+    # recorder.write_line('run for user')
+    # recorder.write_line(column_names)
     # run_single()
-    recorder.write_line('run for movie')
+    # recorder.write_line('run for movie')
     # run_single(pivot_indexes=[1, 0])
 
     recorder.write_line('run random for user')
