@@ -97,7 +97,6 @@ class MovielensProcessor():
 
         self._unzip_file(self.file_path_zip)
 
-    # todo: later optimize procesing data with saving checkpoint
     def map_dataset(self):
         force = self.option.force_map
         done_file = os.path.join(self.root, self.save_dir, self._mapping_folder, 'done')
@@ -164,10 +163,7 @@ class MovielensProcessor():
             user_f.write(map_user_str)
             movie_f.write(map_movie_str)
             rating_f.write(map_rating_str)
-            self.option.rating_columns = ['userId', 'movieId', 'rating', 'timestamp']
             self.option.rating_columns_unique_count = [user_count, movie_count, rating_count, timestamp_count]
-            self.option.pivot_indexes = [0, 1]
-
             self.option.save()
             done_f.write("done")
 
@@ -284,9 +280,13 @@ class MovielensProcessor():
             return
 
         import zipfile
+        extracted_name = ''
         with zipfile.ZipFile(file_path) as out_f:
             self.logger.debug('Unzipping ' + file_path)
+            extracted = out_f.namelist()
+            extracted_name = os.path.join(self.root, self.save_dir, self._raw_folder, extracted[0])
             out_f.extractall(extract_folder)
+        os.rename(extracted_name, os.path.join(extract_folder,self.filename))
 
     def _create_dataset_dir(self, dir):
         try:

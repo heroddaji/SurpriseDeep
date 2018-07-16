@@ -5,10 +5,10 @@
 - normalize_data -> done
 - all singer run should work -> done
 - random run -> done
-- test on all datasets -> wip
-- fix log
+- test on all datasets -> done
 - more optimizer?
 - more sgd?
 - generalize dataset
+- fix log
 
 quansat: distrubtion of test rating

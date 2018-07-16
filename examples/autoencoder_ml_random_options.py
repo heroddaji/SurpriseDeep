@@ -57,6 +57,8 @@ def write_msg(ds_option, model_option, rmse):
             msg += str(model_option[key]) + ','
 
     msg += str(rmse)
+    msg = msg.replace('[', '"[')
+    msg = msg.replace(']', ']"')
     recorder.write_line(msg)
 
 
@@ -106,6 +108,13 @@ def run_random(repeat=1000, pivot_indexes=[0, 1]):
                 layers = []
                 for i in range(random_max_layer):
                     layers.append(random.choice(values))
+
+                order = random.choice(['up', 'down', 'random'])
+                if order == 'up':
+                    layers.sort()
+                elif order == 'down':
+                    layers.sort(reverse=True)
+
                 random_option[key] = layers
             else:
                 random_value = random.choice(values)
@@ -116,6 +125,7 @@ def run_random(repeat=1000, pivot_indexes=[0, 1]):
             print('option already executed, skip')
             continue
         else:
+            print(f'key:{random_key}\n')
             all_options[random_key] = random_option
 
         (ds_option, model_option) = get_default_options()
@@ -126,8 +136,8 @@ def run_random(repeat=1000, pivot_indexes=[0, 1]):
             elif model_option.get(key, None) != None:
                 model_option[key] = value
 
-        rmse = execute(ds_option, model_option)
-        # rmse = 1
+        # rmse = execute(ds_option, model_option)
+        rmse = 1
         rmses.append(rmse)
         write_msg(ds_option, model_option, sum(rmses) / float(len(rmses)))
 
@@ -146,8 +156,8 @@ if __name__ == '__main__':
     # run_single(pivot_indexes=[1, 0])
 
     recorder.write_line('run random for user')
-    run_random(repeat=10000)
+    run_random(repeat=1000)
     recorder.write_line('run random for movie')
-    run_random(repeat=10000, pivot_indexes=[1, 0])
+    run_random(repeat=1000, pivot_indexes=[1, 0])
 
     recorder.close()
