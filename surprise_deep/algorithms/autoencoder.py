@@ -140,7 +140,7 @@ class Autoencoder(AlgoBaseDeep):
                 inputs = mini_batch.to_dense().to(device=self.device)
                 outputs = self.forward(inputs)
                 loss = self.MMSEloss(outputs, inputs)
-                if np.isnan(loss):
+                if math.isnan(loss):
                     continue #todo:check nan loss
                 self.logger.debug_(f'epoch {epoch} - loss:{loss}')
                 loss.backward()
