@@ -24,8 +24,9 @@ class ModelOption(RunOption):
         'decoder_constraint': False,  # reuse weight from the encoder if True
         'resume_training': True,
         'random_data_each_epoch': False,
-        'normalize_data': False,
-        'last_layer_activations': True
+        'normalize_data': True,
+        'last_layer_activations': True,
+        'prediction_floor':False #round off number  to near whole or half, e.g prediction is 1.65 -> 1.5
     }
     _attrs = ['root_dir', 'save_dir', 'file_name']
 

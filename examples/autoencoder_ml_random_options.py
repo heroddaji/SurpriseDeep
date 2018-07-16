@@ -15,27 +15,26 @@ param_options = {
     'train_batch_size': [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1],
     'activation': ['selu', 'relu', 'relu6', 'elu', 'lrelu', 'sigmoid', 'tanh', 'swish'],
     'hidden_layers': [4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2],
-    'optimizer': ['adam', 'adagrad', 'rmsprop', 'sgd'],  # momentum with scheduler??
+    'optimizer': ['adam', 'adagrad', 'rmsprop', 'sgd'],
     'learning_rate': [0.0001, 0.001, 0.005, 0.01, 0.1],
     'drop_prob': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
     'noise_prob': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
     'test_masking_rate': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
     'decoder_constraint': [True, False],
     'normalize_data': [True, False],
+    'prediction_floor': [True, False],
     'test_split_rate': [0.1, 0.2, 0.3, 0.4],
     'random_data_each_epoch': [True, False],
     'last_layer_activations': [True, False],
     'aug_step': [0, 1, 2, 3],
     # 'pivot_indexes': [[0, 1], [0, 1]],
-    # other loss?
-    #
     'RMSE': 0
 }
 
 
 def get_default_options():
-    ds_option = DatasetOption(root_dir='ds_movielens', ds_name='100k', save_dir='100k')
-    model_option = ModelOption(root_dir="recsys_deeplearning", save_dir="autoencoder_100k")
+    ds_option = DatasetOption(root_dir='ds_movielens', ds_name='100k', save_dir='100k_alloption_singlerun')
+    model_option = ModelOption(root_dir="recsys_deeplearning", save_dir="autoencoder_100k_alloption_singlerun")
     return ds_option, model_option
 
 
@@ -70,12 +69,13 @@ def execute(ds_option, model_option):
     return rmse
 
 
-def run_single():
+def run_single(pivot_indexes=[0, 1]):
     for key, values in param_options.items():
         for value in values:
             rmses = []
             for i in range(2):
                 (ds_option, model_option) = get_default_options()
+                ds_option.pivot_indexes = pivot_indexes
                 if key == 'hidden_layers':
                     model_option[key] = [value]
                 else:
@@ -84,8 +84,10 @@ def run_single():
                 rmses.append(rmse)
             write_msg(ds_option, model_option, sum(rmses) / float(len(rmses)))
 
+
 def run_random():
     pass
+
 
 if __name__ == '__main__':
     recorder = Recorder(root_dir="recsys_deeplearning", save_dir="autoencoder_100k")
@@ -94,6 +96,9 @@ if __name__ == '__main__':
     for item in list(param_options.keys()):
         column_names += item + ','
     column_names = column_names[0:len(column_names) - 1]
+    recorder.write_line('run for user')
     recorder.write_line(column_names)
-    run_single()
+    # run_single()
+    recorder.write_line('run for movie')
+    run_single(pivot_indexes=[1, 0])
     recorder.close()

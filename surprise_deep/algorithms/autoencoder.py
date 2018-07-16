@@ -192,11 +192,19 @@ class Autoencoder(AlgoBaseDeep):
                 assert (inputs.shape[0] == outputs.shape[0])
                 assert (inputs.shape[1] == outputs.shape[1])
                 for i in range(len(sparse_row_index)):
-                    predict_value = outputs[sparse_row_index[i], sparse_column_index[i]]
+                    predict_value = outputs[sparse_row_index[i], sparse_column_index[i]].item()
                     if self.option.normalize_data:
                         mean = mean_df['mean'][sparse_row_index[i]]
                         predict_value += mean
-                        s = 0
+
+                    if self.option.prediction_floor:
+                        if predict_value < 0:
+                            predict_value = 0
+                        elif predict_value > 5:
+                            predict_value = 5
+                        else:
+                            predict_value = round(predict_value * 2)/2
+
                     self.logger.info_(
                         f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}:{predict_value}')
                     infer_f.write(f'{sparse_row_index[i]},'

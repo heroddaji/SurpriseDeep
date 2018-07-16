@@ -3,11 +3,12 @@
 - momentum scheduler -> skip
 - singular run -> done
 - normalize_data -> done
-- all singer run should work -> wip
-- random run
+- all singer run should work -> done
+- random run -> wip
 - test on all datasets
+- fix log
 - more optimizer?
 - more sgd?
--genereliize dataset
+- generalize dataset
 
 quansat: distrubtion of test rating
