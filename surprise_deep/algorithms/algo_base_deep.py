@@ -62,7 +62,7 @@ class AlgoBaseDeep(nn.Module):
         mask = targets != mask_value
         num_rating = torch.sum(mask.float())
         # todo: size_average option?
-        size_average = False
+        size_average = True
         criterion = nn.MSELoss(size_average=size_average)
 
         if size_average:

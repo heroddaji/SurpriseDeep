@@ -27,7 +27,8 @@ param_options = {
     'last_layer_activations': [True, False],
     'aug_step': [0, 1, 2, 3],
     'pivot_indexes': [[0, 1], [1, 0]],
-    'RMSE': 0
+    '_RMSE': 0,
+    '_time':0
 }
 
 
@@ -98,7 +99,7 @@ def run_random(repeat=1000):
         count += 1
         random_option = {}
         for key, values in param_options.items():
-            if key == 'RMSE':
+            if key.startswith("_"):
                 continue
             random_value = ''
             if key == 'hidden_layers':

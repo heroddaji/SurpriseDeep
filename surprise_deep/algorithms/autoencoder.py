@@ -141,7 +141,7 @@ class Autoencoder(AlgoBaseDeep):
                 outputs = self.forward(inputs)
                 loss = self.MMSEloss(outputs, inputs)
                 if math.isnan(loss):
-                    continue #todo:check nan loss
+                    continue  # todo:check nan loss
                 self.logger.debug_(f'epoch {epoch} - loss:{loss}')
                 loss.backward()
                 optimizer.step()
@@ -153,8 +153,14 @@ class Autoencoder(AlgoBaseDeep):
                     # Magic data augmentation trick happen here
                     for t in range(self.option.aug_step):
                         inputs = Variable(outputs.data)
+                        # print(sum(sum(inputs)))
+                        if self.option.aug_step_floor:
+                            inputs = ((inputs * 2).round() / 2)
+                            # print(sum(sum(inputs)))
+                            # a = 0
                         if self.option.noise_prob > 0.0:
                             inputs = dp(inputs)
+
                         optimizer.zero_grad()
                         outputs = self.forward(inputs)
                         loss = self.MMSEloss(outputs, inputs)
@@ -208,7 +214,7 @@ class Autoencoder(AlgoBaseDeep):
                         elif predict_value > 5:
                             predict_value = 5
                         else:
-                            predict_value = round(predict_value * 2)/2
+                            predict_value = round(predict_value * 2) / 2
 
                     self.logger.info_(
                         f'predict row {sparse_row_index[i]} and column {sparse_column_index[i]}:{predict_value}')

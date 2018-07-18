@@ -21,12 +21,13 @@ class ModelOption(RunOption):
         'activation': 'selu',  # selu, relu6, etc
         'hidden_layers': [128],
         'aug_step': 1,
+        'aug_step_floor': False,
         'decoder_constraint': False,  # reuse weight from the encoder if True
         'resume_training': True,
         'random_data_each_epoch': False,
         'normalize_data': True,
         'last_layer_activations': True,
-        'prediction_floor':False #round off number  to near whole or half, e.g prediction is 1.65 -> 1.5
+        'prediction_floor': False  # round off number  to near whole or half, e.g prediction is 1.65 -> 1.5
     }
     _attrs = ['root_dir', 'save_dir', 'file_name']
 
