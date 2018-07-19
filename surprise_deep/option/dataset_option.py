@@ -5,25 +5,25 @@ import json
 
 class DatasetOption(RunOption):
     _default_attrs = {
-        'root_dir': 'dataset',
-        'save_dir': 'save_dir',
-        'file_name': 'dataset_option.json',
-        'force_new': False,  # force create new option file
-        'force_download': False,
-        'force_map': False,
-        'force_split': True,
-        'ds_name': '100k',
-        'raw_folder': 'raw',
-        'processed_folder': 'processed',
-        'map_folder': 'map',
-        'rating_columns': ['userId', 'movieId', 'rating', 'timestamp'],  # run for user of movie
-        'pivot_indexes': [
+        'g_root_dir': 'root_dir',
+        'g_save_dir': 'save_dir',
+        'g_file_name': 'dataset_option.json',
+        'g_force_new_option': False,
+        'd_force_download': False,
+        'd_force_map': False,
+        'd_force_split': True,
+        'd_ds_name': '100k',
+        'd_raw_folder': 'raw',
+        'd_processed_folder': 'processed',
+        'd_map_folder': 'map',
+        'd_rating_columns': ['userId', 'movieId', 'rating', 'timestamp'],  # run for user of movie
+        'd_rating_columns_unique_count': [0, 0, 0, 0],
+        'd_normalize_mapping': True,
+        'dp_pivot_indexes': [
             0,
             1
         ],
-        'rating_columns_unique_count': [0, 0, 0, 0],
-        'test_split_rate': 0.3,
-        'normalize_mapping': True
+        'dp_test_split_rate': 0.3,
     }
 
     def __init__(self, **kwargs):

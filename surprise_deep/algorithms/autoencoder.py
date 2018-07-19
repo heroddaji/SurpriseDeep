@@ -39,10 +39,10 @@ class Autoencoder(AlgoBaseDeep):
         self._create_layers()
 
     def _create_layers(self):
-        if self.option.drop_prob > 0:
-            self.drop = nn.Dropout(self.option.drop_prob)
+        if self.option.mp_drop_prob > 0:
+            self.drop = nn.Dropout(self.option.mp_drop_prob)
 
-        self.layers = [self.input_dim] + self.option.hidden_layers
+        self.layers = [self.input_dim] + self.option.mp_hidden_layers
 
         # init the encoder weight
         self.encoder_w = nn.ParameterList(
@@ -75,7 +75,7 @@ class Autoencoder(AlgoBaseDeep):
         self.decoder_bias = self.decoder_bias.to(device=self.device)
 
     def _resume_training(self):
-        if self.option.resume_training:
+        if self.option.m_resume_training:
             temp_files = os.listdir(self.option.get_working_dir())
             for file_name in temp_files:
                 if file_name.startswith(self.tmp_name):
@@ -86,28 +86,28 @@ class Autoencoder(AlgoBaseDeep):
     def encode(self, x):
         for index, w in enumerate(self.encoder_w):
             input = F.linear(input=x, weight=w, bias=self.encoder_bias[index])
-            x = self.activation(input=input, kind=self.option.activation)
-        if self.option.drop_prob > 0:
+            x = self.activation(input=input, kind=self.option.mp_activation)
+        if self.option.mp_drop_prob > 0:
             x = self.drop(x)
 
         return x
 
     def decode(self, z):
-        if self.option.decoder_constraint:
+        if self.option.mp_decoder_constraint:
             for index, w in enumerate(
                     list(reversed(self.encoder_w))):  # constrained autoencode re-uses weights from encoder
                 input = F.linear(input=z, weight=w.transpose(0, 1), bias=self.decoder_bias[index])
-                kind = self.option.activation
+                kind = self.option.mp_activation
                 if index == len(self.layers) - 2:
-                    if not self.option.last_layer_activations:
+                    if not self.option.mp_last_layer_activations:
                         kind = 'none'
                 z = self.activation(input=input, kind=kind)
         else:
             for index, w in enumerate(self.decoder_w):
                 input = F.linear(input=z, weight=w, bias=self.decoder_bias[index])
-                kind = self.option.activation
+                kind = self.option.mp_activation
                 if index == len(self.layers) - 2:
-                    if not self.option.last_layer_activations:
+                    if not self.option.mp_last_layer_activations:
                         kind = 'none'
                 z = self.activation(input=input, kind=kind)
 
@@ -119,7 +119,7 @@ class Autoencoder(AlgoBaseDeep):
     def learn(self, train_ds):
         self._resume_training()
         optimizer = self.optimizer(self.option)
-        num_epochs = self.option.num_epochs
+        num_epochs = self.option.mp_num_epochs
         total_loss = 0
         total_loss_denom = 0.0
 
@@ -129,19 +129,19 @@ class Autoencoder(AlgoBaseDeep):
             self.resume_epoch = None
         start_time = timeit.default_timer()
 
-        dp = nn.Dropout(p=self.option.noise_prob)
+        dp = nn.Dropout(p=self.option.mp_noise_prob)
 
         for epoch in range(resume_e, num_epochs):
             self.train()
             for index, (sparse_row_index, sparse_column_index, sparse_rating, mini_batch) in enumerate(
-                    train_ds.get_mini_batch(batch_size=self.option.train_batch_size, input_dim=self.input_dim,
-                                            is_normalize=self.option.normalize_data)):
+                    train_ds.get_mini_batch(batch_size=self.option.mp_train_batch_size, input_dim=self.input_dim,
+                                            is_normalize=self.option.mp_normalize_data)):
                 optimizer.zero_grad()
                 inputs = mini_batch.to_dense().to(device=self.device)
                 outputs = self.forward(inputs)
-                loss = self.MMSEloss(outputs, inputs)
+                loss = self.MMSEloss(outputs, inputs, size_average=self.option.mp_loss_size_average)
                 if math.isnan(loss):
-                    continue  # todo:check nan loss
+                    continue  # todo:find out why it is nan sometime?
                 self.logger.debug_(f'epoch {epoch} - loss:{loss}')
                 loss.backward()
                 optimizer.step()
@@ -149,21 +149,18 @@ class Autoencoder(AlgoBaseDeep):
                 total_loss += loss.item()
                 total_loss_denom += 1
 
-                if self.option.aug_step > 0:
-                    # Magic data augmentation trick happen here
-                    for t in range(self.option.aug_step):
+                # Data augmentation
+                if self.option.mp_aug_step > 0:
+                    for t in range(self.option.mp_aug_step):
                         inputs = Variable(outputs.data)
-                        # print(sum(sum(inputs)))
-                        if self.option.aug_step_floor:
+                        if self.option.mp_aug_step_floor:
                             inputs = ((inputs * 2).round() / 2)
-                            # print(sum(sum(inputs)))
-                            # a = 0
-                        if self.option.noise_prob > 0.0:
+                        if self.option.mp_noise_prob > 0.0:
                             inputs = dp(inputs)
 
                         optimizer.zero_grad()
                         outputs = self.forward(inputs)
-                        loss = self.MMSEloss(outputs, inputs)
+                        loss = self.MMSEloss(outputs, inputs, size_average=self.option.mp_loss_size_average)
                         loss.backward()
                         optimizer.step()
 
@@ -177,12 +174,12 @@ class Autoencoder(AlgoBaseDeep):
 
     def evaluate(self, eval_ds, infer_name):
         self.eval()
-        infer_file = os.path.join(self.option.root_dir, self.option.save_dir, infer_name)
+        infer_file = os.path.join(self.option.get_working_dir(), infer_name)
         with open(infer_file, 'w') as infer_f:
-            first_column_name = eval_ds.option.rating_columns[eval_ds.option.pivot_indexes[0]]
-            second_column_name = eval_ds.option.rating_columns[eval_ds.option.pivot_indexes[1]]
+            first_column_name = eval_ds.option.d_rating_columns[eval_ds.option.dp_pivot_indexes[0]]
+            second_column_name = eval_ds.option.d_rating_columns[eval_ds.option.dp_pivot_indexes[1]]
             mean_df = None
-            if self.option.normalize_data:
+            if self.option.mp_normalize_data:
                 # todo:hardcode code
                 if first_column_name == 'userId':
                     mean_df = pd.read_csv(os.path.join(eval_ds.option.get_working_dir(), 'map', 'map_user_mean.csv'))
@@ -193,20 +190,20 @@ class Autoencoder(AlgoBaseDeep):
             fourth_column_name = 'infer_rating'
             infer_f.write(f'{first_column_name},{second_column_name},{third_column_name},{fourth_column_name}\n')
             for index, (sparse_row_index, sparse_column_index, sparse_rating, mini_batch) in enumerate(
-                    eval_ds.get_mini_batch(batch_size=self.option.test_batch_size,
+                    eval_ds.get_mini_batch(batch_size=self.option.mp_test_batch_size,
                                            input_dim=self.input_dim,
-                                           test_masking_rate=self.option.test_masking_rate)):
+                                           test_masking_rate=self.option.mp_test_masking_rate)):
                 inputs = mini_batch.to_dense().to(device=self.device)
                 outputs = self.forward(inputs)
                 assert (inputs.shape[0] == outputs.shape[0])
                 assert (inputs.shape[1] == outputs.shape[1])
                 for i in range(len(sparse_row_index)):
                     predict_value = outputs[sparse_row_index[i], sparse_column_index[i]].item()
-                    if self.option.normalize_data:
+                    if self.option.mp_normalize_data:
                         mean = mean_df['mean'][sparse_row_index[i]]
                         predict_value += mean
 
-                    if self.option.prediction_floor:
+                    if self.option.mp_prediction_floor:
                         if math.isnan(predict_value):
                             predict_value = 2.5
                         elif predict_value < 0:
@@ -224,7 +221,7 @@ class Autoencoder(AlgoBaseDeep):
                                   f'{predict_value}\n')
 
     def cal_RMSE(self, infer_name):
-        pred_file = os.path.join(self.option.root_dir, self.option.save_dir, infer_name)
+        pred_file = os.path.join(self.option.g_root_dir, self.option.g_save_dir, infer_name)
         with open(pred_file, 'r') as f:
             lines = f.readlines()
             count = 0

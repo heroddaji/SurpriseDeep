@@ -15,9 +15,8 @@ class Movielens(data.Dataset):
         self.option = ds_option
         self.data_processor = MovielensProcessor(self.option)
 
-        self.processed_path = os.path.join(ds_option.root_dir,
-                                           ds_option.save_dir,
-                                           ds_option.processed_folder,
+        self.processed_path = os.path.join(ds_option.get_working_dir(),
+                                           ds_option.d_processed_folder,
                                            )
         self.is_train_set = train
         self.data = {True: [], False: []}
@@ -35,14 +34,14 @@ class Movielens(data.Dataset):
         else:
             self.data[self.is_train_set] = pd.read_csv(os.path.join(self.processed_path, 'test.csv'))
 
-        pivot_indexes = self.option.pivot_indexes
-        group_row_key = self.option.rating_columns[pivot_indexes[0]]
+        pivot_indexes = self.option.dp_pivot_indexes
+        group_row_key = self.option.d_rating_columns[pivot_indexes[0]]
         self.group_data = self.data[self.is_train_set].groupby(group_row_key)
 
     def download_and_process_data(self):
         self.data_processor.download()
         self.data_processor.map_dataset()
-        if self.option.normalize_mapping:
+        if self.option.d_normalize_mapping:
             self.data_processor.normalize_user_data()
             self.data_processor.normalize_movie_data()
             self.data_processor.normalize_rating_data()
@@ -61,7 +60,7 @@ class Movielens(data.Dataset):
         for index, group in self.group_data:
             random_groups.append(group)
         shuffle(random_groups)
-        pivot_indexes = self.option.pivot_indexes
+        pivot_indexes = self.option.dp_pivot_indexes
         for index, group in enumerate(random_groups):
             try:
                 sparse_row_index += group.iloc[:, pivot_indexes[0]].astype(int).tolist()

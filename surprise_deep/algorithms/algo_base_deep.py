@@ -34,35 +34,34 @@ class AlgoBaseDeep(nn.Module):
     def optimizer(self, option):
         # todo: check the momentum value, can it be in the option?
         optimizer = None
-        kind = option.optimizer
+        kind = option.mp_optimizer
         if kind == 'adam':
             optimizer = optim.Adam(self.parameters(),
-                                   lr=option.learning_rate,
-                                   weight_decay=option.weight_decay)
+                                   lr=option.mp_learning_rate,
+                                   weight_decay=option.mp_weight_decay)
         elif kind == "adagrad":
             optimizer = optim.Adagrad(self.parameters(),
-                                      lr=option.learning_rate,
-                                      weight_decay=option.weight_decay)
+                                      lr=option.mp_learning_rate,
+                                      weight_decay=option.mp_weight_decay)
         elif kind == 'sgd':
             optimizer = optim.SGD(self.parameters(),
-                                  lr=option.learning_rate,
+                                  lr=option.mp_learning_rate,
                                   momentum=0.9,
-                                  weight_decay=option.weight_decay)
+                                  weight_decay=option.mp_weight_decay)
         elif kind == "rmsprop":
             optimizer = optim.RMSprop(self.parameters(),
-                                      lr=option.learning_rate,
+                                      lr=option.mp_learning_rate,
                                       momentum=0.9,
-                                      weight_decay=option.weight_decay)
+                                      weight_decay=option.mp_weight_decay)
         else:
             raise ValueError('Unknown optimizer kind')
 
         return optimizer
 
-    def MMSEloss(self, inputs, targets, mask_value=0.0):
+    def MMSEloss(self, inputs, targets, mask_value=0.0, size_average = False):
         mask = targets != mask_value
         num_rating = torch.sum(mask.float())
-        # todo: size_average option?
-        size_average = True
+        size_average = size_average
         criterion = nn.MSELoss(size_average=size_average)
 
         if size_average:

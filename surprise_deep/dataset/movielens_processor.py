@@ -71,9 +71,9 @@ class MovielensProcessor():
     def __init__(self, ds_option):
         self.option = ds_option
         self.logger = self.option.logger()
-        self.root = self.option.root_dir
-        self.save_dir = self.option.save_dir
-        self.ds_name = self.option.ds_name
+        self.root = self.option.g_root_dir
+        self.save_dir = self.option.g_save_dir
+        self.ds_name = self.option.d_ds_name
 
         url_dict = self._urls[self.ds_name]
         self.url = url_dict['file']
@@ -85,7 +85,7 @@ class MovielensProcessor():
         self.ds_folder = os.path.join(self.root, self.save_dir, self._raw_folder)
 
     def download(self):
-        force = self.option.force_download
+        force = self.option.d_force_download
         self._create_dataset_dir(self._raw_folder)
         if self._check_exists(self.file_path_zip) and not force:
             self.logger.debug('file: ' + self.filename_zip + ' existed, skip download')
@@ -98,7 +98,7 @@ class MovielensProcessor():
         self._unzip_file(self.file_path_zip)
 
     def map_dataset(self):
-        force = self.option.force_map
+        force = self.option.d_force_map
         done_file = os.path.join(self.root, self.save_dir, self._mapping_folder, 'done')
         if os.path.exists(done_file) and not force:
             self.logger.debug(f'Already mapped dataset {self.ds_name}, skip.')
@@ -163,12 +163,12 @@ class MovielensProcessor():
             user_f.write(map_user_str)
             movie_f.write(map_movie_str)
             rating_f.write(map_rating_str)
-            self.option.rating_columns_unique_count = [user_count, movie_count, rating_count, timestamp_count]
+            self.option.d_rating_columns_unique_count = [user_count, movie_count, rating_count, timestamp_count]
             self.option.save()
             done_f.write("done")
 
     def split_train_test_dataset(self):
-        force = self.option.force_split
+        force = self.option.d_force_split
         self._create_dataset_dir(self._processed_folder)
         done_file = os.path.join(self.root, self.save_dir, self._processed_folder, 'done')
         if os.path.exists(done_file) and not force:
@@ -179,12 +179,12 @@ class MovielensProcessor():
         map_rating_file = os.path.join(self.root, self.save_dir, self._mapping_folder, mapping_rating_name)
         train_file = os.path.join(self.root, self.save_dir, self._processed_folder, 'train.csv')
         test_file = os.path.join(self.root, self.save_dir, self._processed_folder, 'test.csv')
-        if self.option.normalize_mapping:
+        if self.option.d_normalize_mapping:
             df = pd.read_csv(map_rating_file,
                              names=['userId', 'movieId', 'rating', 'timestamp', 'normUserRating', 'normMovieRating'])
         else:
             df = pd.read_csv(map_rating_file, names=['userId', 'movieId', 'rating', 'timestamp'])
-        test_split_rate = self.option.test_split_rate
+        test_split_rate = self.option.dp_test_split_rate
         train_ds, test_ds = train_test_split(df, test_size=test_split_rate)
 
         train_ds.to_csv(train_file, header=True, index=False)
@@ -202,8 +202,8 @@ class MovielensProcessor():
             return
 
         df = pd.read_csv(map_rating_file)
-        pivot_indexes = self.option.pivot_indexes
-        group_user_key = self.option.rating_columns[pivot_indexes[0]]
+        pivot_indexes = self.option.dp_pivot_indexes
+        group_user_key = self.option.d_rating_columns[pivot_indexes[0]]
         group_data = df.groupby(group_user_key)
         user_mean = 'userId,mean,count\n'
         for index, group in enumerate(group_data):
@@ -224,8 +224,8 @@ class MovielensProcessor():
             return
 
         df = pd.read_csv(map_rating_file)
-        pivot_indexes = self.option.pivot_indexes
-        group_movie_key = self.option.rating_columns[pivot_indexes[1]]
+        dp_pivot_indexes = self.option.dp_pivot_indexes
+        group_movie_key = self.option.d_rating_columns[dp_pivot_indexes[1]]
         group_data = df.groupby(group_movie_key)
         movie_mean = 'movieId,mean,count\n'
         for index, group in enumerate(group_data):

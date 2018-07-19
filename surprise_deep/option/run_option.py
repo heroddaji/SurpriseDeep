@@ -7,9 +7,10 @@ from .logger import FileLogger
 
 class RunOption(dict):
     _default_attrs = {
-        'root_dir': 'root_dir',
-        'save_dir': 'save_dir',
-        'file_name': 'option'
+        'g_root_dir': 'root_dir',
+        'g_save_dir': 'save_dir',
+        'g_file_name': 'option.json',
+        'g_force_new_option': False,  # force new option, override current option file
     }
 
     def __init__(self, **kwargs):
@@ -40,13 +41,13 @@ class RunOption(dict):
             self[key] = value
 
     def _create_save_dir(self):
-        save_dir_path = os.path.join(self.root_dir, self.save_dir)
+        save_dir_path = self.get_working_dir()
         os.makedirs(save_dir_path, exist_ok=True)
 
     def _create_or_load_option_file(self):
-        file_path = os.path.join(self.root_dir, self.save_dir, self.file_name)
+        file_path = os.path.join(self.get_working_dir(), self.g_file_name)
 
-        if self.force_new or not os.path.exists(file_path):
+        if self.g_force_new_option or not os.path.exists(file_path):
             self.save(file_path)
         else:
             with open(file_path, 'r') as f:
@@ -55,7 +56,7 @@ class RunOption(dict):
 
     def save(self, file_path=None):
         if file_path is None:
-            file_path = os.path.join(self.root_dir, self.save_dir, self.file_name)
+            file_path = os.path.join(self.get_working_dir(), self.g_file_name)
 
         with open(file_path, 'w') as f:
             json.dump(self, f, indent=True)
@@ -64,8 +65,8 @@ class RunOption(dict):
         shutil.rmtree(self.root_dir)
 
     def logger(self, level=logging.DEBUG):
-        file_path = os.path.join(self.root_dir, self.save_dir, 'log.txt')
+        file_path = os.path.join(self.get_working_dir(), 'log.txt')
         return FileLogger(file_path, level)
 
     def get_working_dir(self):
-        return os.path.join(self.root_dir, self.save_dir)
+        return os.path.join(self.g_root_dir, self.g_save_dir)
