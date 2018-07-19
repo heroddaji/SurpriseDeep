@@ -40,7 +40,6 @@ default_attrs = {
     'dp_pivot_indexes': [0, 1],
     '_RMSE': 0,
     '_learn_time': 0,
-    '_ds_json': '',
     '_model_json': ''
 }
 
@@ -63,7 +62,6 @@ param_options = {
     'dp_pivot_indexes': [[0, 1], [1, 0]],
     '_RMSE': 0,
     '_learn_time': 0,
-    '_ds_json': '',
     '_model_json': ''
 }
 
