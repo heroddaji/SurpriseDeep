@@ -42,7 +42,10 @@ class Autoencoder(AlgoBaseDeep):
         if self.option.mp_drop_prob > 0:
             self.drop = nn.Dropout(self.option.mp_drop_prob)
 
-        self.layers = [self.input_dim] + self.option.mp_hidden_layers
+        if isinstance(self.option.mp_hidden_layers,list):
+            self.layers = [self.input_dim] + self.option.mp_hidden_layers
+        else:
+            self.layers = [self.input_dim] + [self.option.mp_hidden_layers]
 
         # init the encoder weight
         self.encoder_w = nn.ParameterList(

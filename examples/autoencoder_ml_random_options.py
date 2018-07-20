@@ -44,22 +44,27 @@ default_attrs = {
 }
 
 param_options = {
-    'mp_loss_size_average': [True, False],
-    'mp_train_batch_size': [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1],
-    'mp_activation': ['selu', 'relu', 'relu6', 'elu', 'lrelu', 'sigmoid', 'tanh', 'swish'],
-    'mp_hidden_layers': [4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2],
-    'mp_optimizer': ['adam', 'adagrad', 'rmsprop', 'sgd'],
     'mp_learning_rate': [0.0001, 0.001, 0.005, 0.01, 0.1],
-    'mp_drop_prob': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+    'mp_weight_decay': [0, 0.0001, 0.001, 0.005, 0.01, 0.1],
+    'mp_drop_prob': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],  # dropout drop probability
     'mp_noise_prob': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+    'mp_train_batch_size': [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1],
+    'mp_test_batch_size': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     'mp_test_masking_rate': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-    'mp_decoder_constraint': [True, False],
-    'mp_normalize_data': [True, False],
-    'mp_prediction_floor': [True, False],
-    'mp_last_layer_activations': [True, False],
+    'mp_num_epochs': [10, 20, 30, 40],
+    'mp_optimizer': ['adam', 'adagrad', 'rmsprop', 'sgd'],
+    'mp_activation': ['selu', 'relu', 'relu6', 'elu', 'lrelu', 'sigmoid', 'tanh', 'swish'],  # selu, relu6, etc
+    'mp_hidden_layers': [4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2],
     'mp_aug_step': [0, 1, 2, 3],
+    'mp_aug_step_floor': [True, False],
+    'mp_decoder_constraint': [True, False],  # reuse weight from the encoder if True
+    'mp_normalize_data': [True, False],
+    'mp_last_layer_activations': [True, False],
+    'mp_prediction_floor': [True, False],  # round off number  to near whole or half, e.g prediction is 1.65 -> 1.5
+    'mp_loss_size_average': [True, False],  # when using MMSE loss, use size_average option
     'dp_test_split_rate': [0.1, 0.2, 0.3, 0.4],
     'dp_pivot_indexes': [[0, 1], [1, 0]],
+
     '_RMSE': 0,
     '_learn_time': 0,
     '_model_json': ''
@@ -186,7 +191,7 @@ if __name__ == '__main__':
         column_names += item + ','
     column_names = column_names[0:len(column_names) - 1]
     recorder.write_line(column_names)
-    run_single()
+    # run_single()
     run_random(repeat=5000)
 
     recorder.close()
