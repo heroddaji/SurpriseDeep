@@ -203,7 +203,7 @@ class MovielensProcessor():
 
         df = pd.read_csv(map_rating_file)
         pivot_indexes = self.option.dp_pivot_indexes
-        group_user_key = self.option.d_rating_columns[pivot_indexes[0]]
+        group_user_key = self.option.d_rating_columns[0]
         group_data = df.groupby(group_user_key)
         user_mean = 'userId,mean,count\n'
         for index, group in enumerate(group_data):
@@ -225,7 +225,7 @@ class MovielensProcessor():
 
         df = pd.read_csv(map_rating_file)
         dp_pivot_indexes = self.option.dp_pivot_indexes
-        group_movie_key = self.option.d_rating_columns[dp_pivot_indexes[1]]
+        group_movie_key = self.option.d_rating_columns[1]
         group_data = df.groupby(group_movie_key)
         movie_mean = 'movieId,mean,count\n'
         for index, group in enumerate(group_data):
@@ -257,13 +257,17 @@ class MovielensProcessor():
 
         # todo: add normalized rating and replace rating file, how to do it better?
         for index, row in map_rating_df.iterrows():
-            userId = int(row['userId'])
-            movieId = int(row['movieId'])
-            rating = row['rating']
-            timestamp = row['timestamp']
-            user_mean = user_mean_df['mean'][userId]
-            movie_mean = movie_mean_df['mean'][movieId]
-            normalized_rating_content += f'{userId},{movieId},{rating},{timestamp},{rating-user_mean},{rating-movie_mean}\n'
+            try:
+                userId = int(row['userId'])
+                movieId = int(row['movieId'])
+                rating = row['rating']
+                timestamp = row['timestamp']
+                user_mean = user_mean_df['mean'][userId]
+                movie_mean = movie_mean_df['mean'][movieId]
+                normalized_rating_content += f'{userId},{movieId},{rating},{timestamp},{rating-user_mean},{rating-movie_mean}\n'
+            except Exception as e:
+                print(e)
+                a = 0
 
         with open(map_rating_norm_file, 'w') as f:
             f.write(normalized_rating_content)
