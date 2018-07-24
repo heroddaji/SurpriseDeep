@@ -46,16 +46,16 @@ default_attrs = {
 param_options = {
     'mp_learning_rate': [0.0001, 0.001, 0.005, 0.01, 0.1],
     'mp_weight_decay': [0, 0.0001, 0.001, 0.005, 0.01, 0.1],
-    'mp_drop_prob': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],  # dropout drop probability
-    'mp_noise_prob': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+    'mp_drop_prob': [0.0, 0.1, 0.2, 0.3, 0.4, 0.0, 0.5, 0.6, 0.7, 0.8, 0.9, 0.0],  # dropout drop probability
+    'mp_noise_prob': [0.0, 0.1, 0.2, 0.3, 0.4, 0.0, 0.5, 0.6, 0.7, 0.8, 0.9, 0.0],
     'mp_train_batch_size': [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1],
     'mp_test_batch_size': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    'mp_test_masking_rate': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-    'mp_num_epochs': [10, 20, 30, 40],
+    'mp_test_masking_rate': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+    'mp_num_epochs': [1, 2, 4, 8, 10],
     'mp_optimizer': ['adam', 'adagrad', 'rmsprop', 'sgd'],
     'mp_activation': ['selu', 'relu', 'relu6', 'elu', 'lrelu', 'sigmoid', 'tanh', 'swish'],  # selu, relu6, etc
     'mp_hidden_layers': [4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2],
-    'mp_aug_step': [0, 1, 2, 3],
+    'mp_aug_step': [0, 1, 2, 3, 0, 1, 0],
     'mp_aug_step_floor': [True, False],
     'mp_decoder_constraint': [True, False],  # reuse weight from the encoder if True
     'mp_normalize_data': [True, False],
@@ -125,7 +125,7 @@ def run_single():
 
         for value in values:
             (ds_option, model_option) = get_default_options()
-            if key == 'hidden_layers':
+            if key == 'mp_hidden_layers':
                 model_option[key] = [value]
             else:
                 model_option[key] = value
@@ -146,7 +146,7 @@ def run_random(repeat=1000):
                 continue
 
             random_value = ''
-            if key == 'hidden_layers':
+            if key == 'mp_hidden_layers':
                 layers_num = [1, 2, 3, 4, 5]
                 random_max_layer = random.choice(layers_num)
                 layers = []
