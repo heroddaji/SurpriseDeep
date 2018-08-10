@@ -1,6 +1,6 @@
-examples/ds_*
-examples/ml_*
-examples/data*
-examples/recsys*
+ds_*
+ml_*
+data*
+ds*
 .idea/
 __pycache__/
