@@ -1,3 +1,5 @@
 pytorch
 pandas
 py2neo
+scipy
+sklearn
