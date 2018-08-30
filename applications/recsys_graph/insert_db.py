@@ -83,6 +83,43 @@ if __name__ == '__main__':
 
 
 '''
-LOAD CSV WITH HEADERS FROM 'file:///ml_26m/ratings.csv' AS line
-CREATE (:ml26m_rating {userId:toInteger(line.userId), movieId:toInteger(line.movieId), rating:line.rating, timestamp:line.timestamp})
+create constraint on (m:ml26m_movie) assert m.movieId is unique
+create constraint on (u:ml26m_user) assert u.userId is unique
+
+using periodic commit
+load csv with headers from 'file:///ml26m/movies.csv' as line
+with line, (size(line.title) - 6) as len
+merge (m:ml26m_movie {movieId:tointeger(line.movieId)})            
+        on match set
+            m.title = trim(line.title),
+            m.year = tointeger(substring(reverse(split(line.title,' '))[0],1,4)),
+            m.genres = split(line.genres,'|')
+    
+;
+using periodic commit
+load csv with headers from 'file:///ml26m/ratings.csv' as line
+with line
+
+match (m:ml26m_movie {movieId: tointeger(line.movieId)})
+merge (u:ml26m_user {userId: tointeger(line.userId)})
+
+merge (u)-[r:ml26m_rating]-(m)
+    on create set
+        r.rating = tofloat(line.rating),         
+        r.timestamp = tointeger(line.timestamp)
+;
+
+using periodic commit
+load csv with headers from 'file:///ml26m/tags.csv' as line
+with line
+
+match (m:ml26m_movie {movieId: tointeger(line.movieId)})
+merge (u:ml26m_user {userId: tointeger(line.userId)})
+
+merge (u)-[t:ml26m_tag]-(m)
+    on create set
+        t.tag = line.tag,         
+        t.timestamp = tointeger(line.timestamp)
+;
+
 '''
