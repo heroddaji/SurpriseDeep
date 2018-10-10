@@ -6,7 +6,6 @@ print(sys.path)
 
 import os
 import pandas as pd
-from surprise_deep import *
 from py2neo import Graph
 from py2neo import Node
 

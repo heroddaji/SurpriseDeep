@@ -1,4 +1,4 @@
-from ..option.run_option import RunOption
+from applications.recsys_autoencoder_pytorch.option import RunOption
 import os
 
 

@@ -1,14 +1,8 @@
 import sys
-import time
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
 
 sys.path.append('../..')
 sys.path.append('..')
 print(sys.path)
-
-from surprise_deep import *
 
 pre_train = False
 model_name = 'autoencoder_10m'
