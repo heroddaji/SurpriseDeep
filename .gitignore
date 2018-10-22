@@ -2,5 +2,6 @@ ds_*
 ml_*
 data*
 ds*
+.ipynb_checkpoints/
 .idea/
 __pycache__/
